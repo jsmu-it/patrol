@@ -1,0 +1,5 @@
+/backend/api/storage/secrets/*.json
+.env
+.DS_Store
+/vendor
+/node_modules
