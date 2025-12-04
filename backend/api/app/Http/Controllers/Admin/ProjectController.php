@@ -137,4 +137,30 @@ class ProjectController extends Controller
 
         return redirect()->route('admin.projects.index')->with('status', 'Shift project berhasil diperbarui.');
     }
+
+    public function editPkwt(Request $request, Project $project): View
+    {
+        $user = $request->user();
+        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+            abort(403);
+        }
+
+        return view('admin.projects.pkwt', compact('project'));
+    }
+
+    public function updatePkwt(Request $request, Project $project): RedirectResponse
+    {
+        $user = $request->user();
+        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'pkwt_template' => ['nullable', 'string'],
+        ]);
+
+        $project->update($data);
+
+        return redirect()->route('admin.projects.index')->with('status', 'Template PKWT berhasil diperbarui.');
+    }
 }

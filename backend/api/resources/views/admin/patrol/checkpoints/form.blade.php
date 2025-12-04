@@ -31,6 +31,10 @@
         <label class="block text-gray-600 mb-1">Longitude</label>
         <input type="number" step="0.0000001" name="longitude" value="{{ old('longitude', $checkpoint->longitude ?? '') }}" class="w-full border border-gray-300 rounded px-2 py-1.5">
     </div>
+    <div>
+        <label class="block text-gray-600 mb-1">Radius (meter)</label>
+        <input type="number" name="radius_meters" value="{{ old('radius_meters', $checkpoint->radius_meters ?? 15) }}" class="w-full border border-gray-300 rounded px-2 py-1.5" required>
+    </div>
     @if($isEdit)
         <div class="md:col-span-2 text-[11px] text-gray-500">
             Kode QR: <span class="font-mono">{{ $checkpoint->code }}</span>
@@ -62,6 +66,7 @@
 
             const latInput = document.querySelector('input[name="latitude"]');
             const lngInput = document.querySelector('input[name="longitude"]');
+            const radiusInput = document.querySelector('input[name="radius_meters"]');
 
             const searchInput = document.getElementById('checkpoint-search');
             const searchButton = document.getElementById('checkpoint-search-button');
@@ -69,6 +74,7 @@
 
             const defaultLat = parseFloat(latInput.value || '0') || 0;
             const defaultLng = parseFloat(lngInput.value || '0') || 0;
+            const defaultRadius = parseInt(radiusInput.value || '15') || 15;
 
             const map = L.map('checkpoint-map').setView([defaultLat, defaultLng], (latInput.value && lngInput.value) ? 16 : 2);
 
@@ -78,21 +84,57 @@
             }).addTo(map);
 
             let marker = null;
+            let circle = null;
+
             if (latInput.value && lngInput.value) {
-                marker = L.marker([defaultLat, defaultLng]).addTo(map);
+                const latLng = [defaultLat, defaultLng];
+                marker = L.marker(latLng).addTo(map);
+                circle = L.circle(latLng, {
+                    color: 'blue',
+                    fillColor: '#30f',
+                    fillOpacity: 0.2,
+                    radius: defaultRadius
+                }).addTo(map);
+            }
+
+            function updateMap(lat, lng) {
+                const latLng = [lat, lng];
+                
+                if (marker) {
+                    marker.setLatLng(latLng);
+                } else {
+                    marker = L.marker(latLng).addTo(map);
+                }
+
+                const radius = parseInt(radiusInput.value || '15') || 15;
+                if (circle) {
+                    circle.setLatLng(latLng);
+                    circle.setRadius(radius);
+                } else {
+                    circle = L.circle(latLng, {
+                        color: 'blue',
+                        fillColor: '#30f',
+                        fillOpacity: 0.2,
+                        radius: radius
+                    }).addTo(map);
+                }
             }
 
             map.on('click', function (e) {
                 const { lat, lng } = e.latlng;
                 latInput.value = lat.toFixed(7);
                 lngInput.value = lng.toFixed(7);
-
-                if (marker) {
-                    marker.setLatLng(e.latlng);
-                } else {
-                    marker = L.marker(e.latlng).addTo(map);
-                }
+                updateMap(lat, lng);
             });
+
+            if (radiusInput) {
+                radiusInput.addEventListener('input', function() {
+                    const radius = parseInt(this.value || '0');
+                    if (circle && radius > 0) {
+                        circle.setRadius(radius);
+                    }
+                });
+            }
 
             async function searchLocation() {
                 const query = (searchInput?.value || '').trim();
@@ -126,13 +168,7 @@
                             if (!isNaN(lat) && !isNaN(lng)) {
                                 latInput.value = lat.toFixed(7);
                                 lngInput.value = lng.toFixed(7);
-
-                                if (marker) {
-                                    marker.setLatLng([lat, lng]);
-                                } else {
-                                    marker = L.marker([lat, lng]).addTo(map);
-                                }
-
+                                updateMap(lat, lng);
                                 map.setView([lat, lng], 17);
                             }
 
@@ -150,6 +186,26 @@
 
             if (searchButton && searchInput) {
                 searchButton.addEventListener('click', searchLocation);
+
+                // Debounce function to limit API calls
+                function debounce(func, wait) {
+                    let timeout;
+                    return function(...args) {
+                        const context = this;
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(context, args), wait);
+                    };
+                }
+
+                // Auto-search on typing with debounce
+                searchInput.addEventListener('input', debounce(function() {
+                    if (this.value.trim().length > 2) {
+                        searchLocation();
+                    } else if (this.value.trim().length === 0) {
+                         if (searchResults) searchResults.innerHTML = '';
+                    }
+                }, 800));
+
                 searchInput.addEventListener('keydown', (event) => {
                     if (event.key === 'Enter') {
                         event.preventDefault();

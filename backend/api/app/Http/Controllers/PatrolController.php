@@ -83,10 +83,12 @@ class PatrolController extends Controller
                     (float) $data['longitude']
                 );
 
-                // Allow 50m radius for checkpoint patrol
-                if ($distance > 50) {
+                // Use checkpoint specific radius if available, otherwise default to 150m
+                $maxDistance = $checkpoint->radius_meters ?? 150;
+
+                if ($distance > $maxDistance) {
                     return response()->json([
-                        'message' => "Lokasi Anda terlalu jauh dari titik patroli ({$distance}m). Maksimal 50m.",
+                        'message' => "Lokasi Anda terlalu jauh dari titik patroli ({$distance}m). Maksimal {$maxDistance}m.",
                     ], 422);
                 }
             }
@@ -96,7 +98,9 @@ class PatrolController extends Controller
             ? $request->file('photo')->store('patrol/photos', 'public')
             : null;
 
-        $occurredAt = CarbonImmutable::now('UTC');
+        $occurredAt = isset($data['occurred_at'])
+            ? CarbonImmutable::parse($data['occurred_at'])
+            : CarbonImmutable::now();
 
         $log = PatrolLog::create([
             'user_id' => $user->id,

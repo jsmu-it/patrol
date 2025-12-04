@@ -19,6 +19,7 @@ class UserProfile extends Model
         'contract_period',
         'employment_status',
         'ktp_number',
+        'salary',
         'satpam_qualification',
         'satpam_training_date',
         'satpam_training_institution',

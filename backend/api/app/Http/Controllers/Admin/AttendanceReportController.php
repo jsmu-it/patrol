@@ -102,8 +102,8 @@ class AttendanceReportController extends Controller
             return null;
         }
 
-        $from = CarbonImmutable::parse($data['from'], 'UTC')->startOfDay();
-        $to = CarbonImmutable::parse($data['to'] ?? $data['from'], 'UTC')->endOfDay();
+        $from = CarbonImmutable::parse($data['from'])->startOfDay();
+        $to = CarbonImmutable::parse($data['to'] ?? $data['from'])->endOfDay();
 
         $user = $request->user();
 

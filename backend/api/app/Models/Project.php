@@ -17,6 +17,7 @@ class Project extends Model
         'longitude',
         'geofence_radius_meters',
         'is_active',
+        'pkwt_template',
     ];
 
     public function guards()

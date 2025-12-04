@@ -22,18 +22,18 @@
                         </div>
                     </div>
                     <div class="mt-4 md:mt-0">
-                        <a href="mailto:hr@jsmuguard.com?subject=Application for {{ $career->title }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition">Apply Now</a>
+                        <a href="{{ route('career.apply-form', $career->id) }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition">Apply Now</a>
                     </div>
                 </div>
-                <div class="mt-4 pt-4 border-t border-gray-100">
-                    <h3 class="font-semibold text-gray-800 mb-2">Description:</h3>
-                    <p class="text-gray-600 mb-4">{{ $career->description }}</p>
-                    @if($career->requirements)
-                    <h3 class="font-semibold text-gray-800 mb-2">Requirements:</h3>
-                    <p class="text-gray-600">{{ $career->requirements }}</p>
-                    @endif
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <h3 class="font-semibold text-gray-800 mb-2">Description:</h3>
+                        <p class="text-gray-600 mb-4">{{ $career->description }}</p>
+                        @if($career->requirements)
+                        <h3 class="font-semibold text-gray-800 mb-2">Requirements:</h3>
+                        <p class="text-gray-600 mb-4">{{ $career->requirements }}</p>
+                        @endif
+                    </div>
                 </div>
-            </div>
             @endforeach
 
             @if($careers->isEmpty())

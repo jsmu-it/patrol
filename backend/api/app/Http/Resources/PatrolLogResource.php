@@ -22,9 +22,9 @@ class PatrolLogResource extends JsonResource
             'photo_url' => $this->photo_path ? asset('storage/'.$this->photo_path) : null,
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
-            'occurred_at' => $this->occurred_at?->toISOString(),
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'occurred_at' => $this->occurred_at?->format('d-m-Y H:i'),
+            'created_at' => $this->created_at?->format('d-m-Y H:i'),
+            'updated_at' => $this->updated_at?->format('d-m-Y H:i'),
         ];
     }
 }

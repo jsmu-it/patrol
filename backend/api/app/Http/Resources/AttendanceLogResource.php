@@ -15,15 +15,15 @@ class AttendanceLogResource extends JsonResource
             'project_id' => $this->project_id,
             'shift_id' => $this->shift_id,
             'type' => $this->type,
-            'occurred_at' => $this->occurred_at?->toISOString(),
+            'occurred_at' => $this->occurred_at?->format('d-m-Y H:i'),
             'latitude' => $this->latitude,
             'longitude' => $this->longitude,
             'selfie_photo_path' => $this->selfie_photo_path,
             'note' => $this->note,
             'mode' => $this->mode,
             'status_dinas' => $this->status_dinas,
-            'created_at' => $this->created_at?->toISOString(),
-            'updated_at' => $this->updated_at?->toISOString(),
+            'created_at' => $this->created_at?->format('d-m-Y H:i'),
+            'updated_at' => $this->updated_at?->format('d-m-Y H:i'),
         ];
     }
 }

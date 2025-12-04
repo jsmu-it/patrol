@@ -6,7 +6,10 @@
 @section('content')
     <form method="POST" action="{{ route('admin.projects.shifts.update', $project) }}" class="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 text-xs max-w-xl">
         @csrf
-        <p class="text-gray-600 mb-2">Pilih shift yang berlaku untuk project ini.</p>
+        <div class="flex justify-between items-start mb-2">
+             <p class="text-gray-600">Pilih shift yang berlaku untuk project ini.</p>
+             <a href="{{ route('admin.shifts.index') }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline">Kelola Data Shift</a>
+        </div>
         <div class="space-y-2">
             @foreach($shifts as $shift)
                 <label class="flex items-center gap-2">

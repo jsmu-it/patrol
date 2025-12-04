@@ -76,9 +76,123 @@ class CompanyProfileController extends Controller
         return view('company_profile.career', compact('careers'));
     }
 
+    public function showApplyForm(CmsCareer $career)
+    {
+        return view('company_profile.apply_form', compact('career'));
+    }
+
     public function contact()
     {
         return view('company_profile.contact');
+    }
+
+    public function sendApplication(Request $request)
+    {
+        $request->validate([
+            'cms_career_id' => 'nullable|exists:cms_careers,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'phone' => 'required|string|max:20',
+            'cover_letter' => 'nullable|string',
+            'resume' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            
+            // Basic validation for other fields (can be made stricter if needed)
+            'birth_city' => 'nullable|string',
+            'birth_date' => 'nullable|date',
+            'age' => 'nullable|integer',
+            'gender' => 'nullable|string',
+            'religion' => 'nullable|string',
+            'blood_type' => 'nullable|string',
+            'mother_name' => 'nullable|string',
+            'marital_status' => 'nullable|string',
+            'ktp_number' => 'nullable|string',
+            'kk_number' => 'nullable|string',
+            'height_cm' => 'nullable|integer',
+            'weight_kg' => 'nullable|integer',
+            'domicile_street' => 'nullable|string',
+            'domicile_rt' => 'nullable|string',
+            'domicile_rw' => 'nullable|string',
+            'domicile_subdistrict' => 'nullable|string',
+            'domicile_district' => 'nullable|string',
+            'domicile_regency' => 'nullable|string',
+            'domicile_province' => 'nullable|string',
+            'education_level' => 'nullable|string',
+            'education_school_name' => 'nullable|string',
+            'education_major' => 'nullable|string',
+            'education_graduation_year' => 'nullable|string',
+            'education_city' => 'nullable|string',
+            
+            'satpam_qualification' => 'nullable|string',
+            'satpam_kta_number' => 'nullable|string',
+            'satpam_certificate_number' => 'nullable|string',
+            'satpam_training_date' => 'nullable|date',
+            'satpam_training_institution' => 'nullable|string',
+            'satpam_training_location' => 'nullable|string',
+
+            'uniform_shirt_size' => 'nullable|string',
+            'uniform_pants_size' => 'nullable|string',
+            'uniform_shoes_size' => 'nullable|string',
+
+            'emergency_name' => 'nullable|string',
+            'emergency_phone' => 'nullable|string',
+            'emergency_relation' => 'nullable|string',
+
+            'npwp' => 'nullable|string',
+            'sim_a_number' => 'nullable|string',
+            'sim_c_number' => 'nullable|string',
+            'bpjs_tk_number' => 'nullable|string',
+            'bpjs_kes_number' => 'nullable|string',
+
+            'address_street' => 'nullable|string',
+            'address_rt' => 'nullable|string',
+            'address_rw' => 'nullable|string',
+            'address_subdistrict' => 'nullable|string',
+            'address_district' => 'nullable|string',
+            'address_regency' => 'nullable|string',
+            'address_province' => 'nullable|string',
+            'address_postal_code' => 'nullable|string',
+
+            'children_count' => 'nullable|integer',
+
+            'exp1_year' => 'nullable|string',
+            'exp1_position' => 'nullable|string',
+            'exp1_company' => 'nullable|string',
+            'exp1_city' => 'nullable|string',
+            'exp2_year' => 'nullable|string',
+            'exp2_position' => 'nullable|string',
+            'exp2_company' => 'nullable|string',
+            'exp2_city' => 'nullable|string',
+            'exp3_year' => 'nullable|string',
+            'exp3_position' => 'nullable|string',
+            'exp3_company' => 'nullable|string',
+            'exp3_city' => 'nullable|string',
+
+            'cert1_date' => 'nullable|date',
+            'cert1_training' => 'nullable|string',
+            'cert1_organizer' => 'nullable|string',
+            'cert1_city' => 'nullable|string',
+            'cert2_date' => 'nullable|date',
+            'cert2_training' => 'nullable|string',
+            'cert2_organizer' => 'nullable|string',
+            'cert2_city' => 'nullable|string',
+            'cert3_date' => 'nullable|date',
+            'cert3_training' => 'nullable|string',
+            'cert3_organizer' => 'nullable|string',
+            'cert3_city' => 'nullable|string',
+
+            'instagram' => 'nullable|string',
+            'facebook' => 'nullable|string',
+            'twitter' => 'nullable|string',
+            'tiktok' => 'nullable|string',
+            'linkedin' => 'nullable|string',
+            'youtube' => 'nullable|string',
+        ]);
+
+        $path = $request->file('resume')->store('resumes', 'public');
+
+        \App\Models\JobApplication::create($request->except('resume') + ['resume_path' => $path, 'status' => 'pending']);
+
+        return redirect()->route('career')->with('success', 'Application submitted successfully! We will review your profile.');
     }
 
     public function sendContact(Request $request)

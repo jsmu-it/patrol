@@ -38,6 +38,23 @@
         <div id="project-search-results" class="mb-2 text-[11px] text-gray-700 space-y-1"></div>
         <div id="project-map" class="h-64 w-full rounded border border-gray-200"></div>
         <p class="mt-1 text-[11px] text-gray-500">Klik pada peta atau pilih hasil pencarian untuk mengisi koordinat latitude &amp; longitude secara otomatis.</p>
+        
+        @if(isset($project))
+            <div class="mt-4 flex gap-2 border-t pt-4">
+                <a href="{{ route('admin.projects.shifts.edit', $project->id) }}" class="px-3 py-2 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    Pengaturan Shift
+                </a>
+                <a href="{{ route('admin.projects.pkwt.edit', $project->id) }}" class="px-3 py-2 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Pengaturan PKWT
+                </a>
+            </div>
+        @else
+            <div class="mt-4 p-2 bg-gray-50 border border-gray-200 rounded text-[11px] text-gray-600">
+                Simpan project terlebih dahulu untuk mengakses pengaturan Shift dan PKWT.
+            </div>
+        @endif
     </div>
 </div>
 
@@ -147,6 +164,26 @@
 
             if (searchButton && searchInput) {
                 searchButton.addEventListener('click', searchLocation);
+                
+                // Debounce function to limit API calls
+                function debounce(func, wait) {
+                    let timeout;
+                    return function(...args) {
+                        const context = this;
+                        clearTimeout(timeout);
+                        timeout = setTimeout(() => func.apply(context, args), wait);
+                    };
+                }
+
+                // Auto-search on typing with debounce
+                searchInput.addEventListener('input', debounce(function() {
+                    if (this.value.trim().length > 2) {
+                        searchLocation();
+                    } else if (this.value.trim().length === 0) {
+                         if (searchResults) searchResults.innerHTML = '';
+                    }
+                }, 800));
+
                 searchInput.addEventListener('keydown', (event) => {
                     if (event.key === 'Enter') {
                         event.preventDefault();

@@ -63,18 +63,40 @@
                     <td class="px-6 py-3">{{ $record['project_name'] }}</td>
                     <td class="px-6 py-3 text-xs">{{ $record['shift_name'] }}</td>
                     <td class="px-6 py-3">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono">{{ $record['clock_in_time'] }}</span>
-                            @if($record['clock_in_photo'])
-                                <a href="{{ $record['clock_in_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono">{{ $record['clock_in_time'] }}</span>
+                                @if($record['clock_in_photo'])
+                                    <a href="{{ $record['clock_in_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
+                                @endif
+                            </div>
+                            @if(!empty($record['clock_in_location']) && $record['clock_in_location'] !== '-')
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ $record['clock_in_location'] }}" target="_blank" class="text-[10px] text-gray-500 hover:text-blue-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    {{ $record['clock_in_location'] }}
+                                </a>
                             @endif
                         </div>
                     </td>
                     <td class="px-6 py-3">
-                        <div class="flex items-center gap-2">
-                            <span class="font-mono {{ $record['clock_out_time'] === '-' ? 'text-red-500 font-bold' : '' }}">{{ $record['clock_out_time'] }}</span>
-                            @if($record['clock_out_photo'])
-                                <a href="{{ $record['clock_out_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
+                        <div class="flex flex-col gap-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-mono {{ $record['clock_out_time'] === '-' ? 'text-red-500 font-bold' : '' }}">{{ $record['clock_out_time'] }}</span>
+                                @if($record['clock_out_photo'])
+                                    <a href="{{ $record['clock_out_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
+                                @endif
+                            </div>
+                            @if(!empty($record['clock_out_location']) && $record['clock_out_location'] !== '-')
+                                <a href="https://www.google.com/maps/search/?api=1&query={{ $record['clock_out_location'] }}" target="_blank" class="text-[10px] text-gray-500 hover:text-blue-600 flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    {{ $record['clock_out_location'] }}
+                                </a>
                             @endif
                         </div>
                     </td>

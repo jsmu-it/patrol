@@ -33,6 +33,12 @@
             <a href="{{ route('admin.approvals.attendance') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.approvals.attendance')) bg-slate-800 @endif">Absensi Dinas</a>
             <a href="{{ route('admin.approvals.leave') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.approvals.leave')) bg-slate-800 @endif">Izin / Cuti</a>
 
+            <div class="pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">HRD</div>
+            <a href="{{ route('admin.hrd.applications') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.hrd.applications*') && !request()->routeIs('admin.hrd.rejected')) bg-slate-800 @endif">Pelamar</a>
+            <a href="{{ route('admin.hrd.rejected') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.hrd.rejected')) bg-slate-800 @endif">Karyawan Ditolak</a>
+            <a href="{{ route('admin.payroll.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.payroll.*')) bg-slate-800 @endif">Payroll</a>
+            <a href="{{ route('admin.pkwt.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.pkwt.*')) bg-slate-800 @endif">PKWT</a>
+
             <div class="pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Company Profile</div>
             <a href="{{ route('admin.cms-hero-slides.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.cms-hero-slides.*')) bg-slate-800 @endif">Hero Slider</a>
             <a href="{{ route('admin.cms-contents.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.cms-contents.*')) bg-slate-800 @endif">Konten Halaman</a>
@@ -42,10 +48,6 @@
             <a href="{{ route('admin.cms-clients.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.cms-clients.*')) bg-slate-800 @endif">Klien</a>
             <a href="{{ route('admin.cms-careers.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.cms-careers.*')) bg-slate-800 @endif">Karir</a>
             <a href="{{ route('admin.cms-contacts.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.cms-contacts.*')) bg-slate-800 @endif">Pesan Masuk</a>
-
-            <div class="pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Keuangan</div>
-            <a href="{{ route('admin.payroll.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.payroll.*')) bg-slate-800 @endif">Payroll</a>
-            <a href="{{ route('admin.pkwt.index') }}" class="block px-3 py-2 rounded hover:bg-slate-800 @if(request()->routeIs('admin.pkwt.*')) bg-slate-800 @endif">PKWT</a>
         </nav>
         <form method="POST" action="{{ route('admin.logout') }}" class="px-4 pb-4 mt-auto">
             @csrf

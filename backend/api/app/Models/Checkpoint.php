@@ -17,6 +17,7 @@ class Checkpoint extends Model
         'description',
         'latitude',
         'longitude',
+        'radius_meters',
     ];
 
     public function project()

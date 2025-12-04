@@ -43,6 +43,19 @@ class DashboardController extends Controller
 
         $attendanceToday = $attendanceQuery->count();
         $patrolToday = $patrolQuery->count();
+        
+        $todayAttendanceList = $attendanceQuery->with(['user', 'project', 'shift'])
+            ->orderBy('occurred_at', 'desc')
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'user_name' => $log->user->name,
+                    'project_name' => $log->project->name,
+                    'time' => $log->occurred_at->format('H:i'),
+                    'type' => $log->type === 'clock_in' ? 'Masuk' : 'Keluar',
+                    'shift' => $log->shift->name ?? '-',
+                ];
+            });
 
         $patrolPoints = $checkpointsQuery->get()
             ->map(function (Checkpoint $checkpoint) {
@@ -62,6 +75,7 @@ class DashboardController extends Controller
             'totalProjects' => $totalProjects,
             'attendanceToday' => $attendanceToday,
             'patrolToday' => $patrolToday,
+            'todayAttendanceList' => $todayAttendanceList,
             'patrolPoints' => $patrolPoints,
         ]);
     }

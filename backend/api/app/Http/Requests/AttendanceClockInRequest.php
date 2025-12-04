@@ -20,6 +20,7 @@ class AttendanceClockInRequest extends FormRequest
             'mode' => ['required', 'in:normal,dinas'],
             'note' => ['nullable', 'string'],
             'selfie' => ['required', 'image', 'max:5120'],
+            'occurred_at' => ['nullable', 'date'],
         ];
     }
 }

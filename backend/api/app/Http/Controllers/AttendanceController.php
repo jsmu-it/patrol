@@ -58,7 +58,9 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
-        $occurredAt = CarbonImmutable::now('UTC');
+        $occurredAt = isset($data['occurred_at'])
+            ? CarbonImmutable::parse($data['occurred_at'])
+            : CarbonImmutable::now();
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,
@@ -97,7 +99,9 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
-        $occurredAt = CarbonImmutable::now('UTC');
+        $occurredAt = isset($data['occurred_at'])
+            ? CarbonImmutable::parse($data['occurred_at'])
+            : CarbonImmutable::now();
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,
@@ -121,8 +125,8 @@ class AttendanceController extends Controller
 
         $data = $request->validated();
 
-        $from = CarbonImmutable::parse($data['from'], 'UTC')->startOfDay();
-        $to = CarbonImmutable::parse($data['to'], 'UTC')->endOfDay();
+        $from = CarbonImmutable::parse($data['from'])->startOfDay();
+        $to = CarbonImmutable::parse($data['to'])->endOfDay();
 
         if ($from->diffInMonths($to) > 12) {
             return response()->json([

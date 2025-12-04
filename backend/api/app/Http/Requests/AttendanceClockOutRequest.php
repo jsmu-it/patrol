@@ -19,6 +19,7 @@ class AttendanceClockOutRequest extends FormRequest
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'note' => ['nullable', 'string'],
             'selfie' => ['nullable', 'image', 'max:5120'],
+            'occurred_at' => ['nullable', 'date'],
         ];
     }
 }

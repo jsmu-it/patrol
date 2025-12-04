@@ -6,7 +6,7 @@ $kernel->bootstrap();
 
 use App\Models\User;
 
-$username = 'adminHO'; // Ganti dengan username yang Anda gunakan
+$username = 'itjsmu'; // Ganti dengan username yang Anda gunakan
 $user = User::where('username', $username)->first();
 
 if ($user) {

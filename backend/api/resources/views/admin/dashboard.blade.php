@@ -19,7 +19,54 @@
         </div>
         <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
             <div class="text-xs text-gray-500">Absensi Hari Ini</div>
-            <div class="mt-1 text-2xl font-semibold text-gray-800">{{ $attendanceToday }}</div>
+            <div class="mt-1 flex items-center justify-between">
+                <span class="text-2xl font-semibold text-gray-800">{{ $attendanceToday }}</span>
+                <button onclick="document.getElementById('attendance-modal').classList.remove('hidden')" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Lihat Detail</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Modal -->
+    <div id="attendance-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Detail Absensi Hari Ini</h3>
+                <button onclick="document.getElementById('attendance-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-500">
+                    <span class="text-2xl">&times;</span>
+                </button>
+            </div>
+            <div class="overflow-x-auto max-h-96">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shift</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @forelse($todayAttendanceList as $log)
+                            <tr>
+                                <td class="px-4 py-2 whitespace-nowrap">{{ $log['time'] }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap font-medium">{{ $log['user_name'] }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap">{{ $log['project_name'] }}</td>
+                                <td class="px-4 py-2 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full {{ $log['type'] === 'Masuk' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        {{ $log['type'] }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-500">{{ $log['shift'] }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-4 py-4 text-center text-gray-500">Belum ada data absensi hari ini.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 

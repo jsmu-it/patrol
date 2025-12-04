@@ -41,6 +41,7 @@ class PatrolLogRequest extends FormRequest
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
             'photo' => ['nullable', 'image', 'max:5120'],
+            'occurred_at' => ['nullable', 'date'],
         ];
     }
 }

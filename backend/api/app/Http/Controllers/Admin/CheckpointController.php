@@ -99,6 +99,7 @@ class CheckpointController extends Controller
             'description' => ['nullable', 'string'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'radius_meters' => ['required', 'integer', 'min:1'],
         ]);
 
         if ($user->isProjectAdmin() && $user->active_project_id && $checkpoint->project_id !== $user->active_project_id) {

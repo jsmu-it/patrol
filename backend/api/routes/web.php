@@ -32,6 +32,8 @@ Route::get('/activities', [CompanyProfileController::class, 'activities'])->name
 Route::get('/activities/{activity:slug}', [CompanyProfileController::class, 'activityDetail'])->name('activities.show');
 Route::get('/clients', [CompanyProfileController::class, 'clients'])->name('clients');
 Route::get('/career', [CompanyProfileController::class, 'career'])->name('career');
+Route::get('/career/{career}/apply', [CompanyProfileController::class, 'showApplyForm'])->name('career.apply-form');
+Route::post('/career/apply', [CompanyProfileController::class, 'sendApplication'])->name('career.apply');
 Route::get('/contact', [CompanyProfileController::class, 'contact'])->name('contact');
 Route::post('/contact', [CompanyProfileController::class, 'sendContact'])->name('contact.send');
 
@@ -54,6 +56,11 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN'])->prefix('admi
     Route::resource('projects', AdminProjectController::class)->except(['show']);
     Route::get('projects/{project}/shifts', [AdminProjectController::class, 'editShifts'])->name('projects.shifts.edit');
     Route::post('projects/{project}/shifts', [AdminProjectController::class, 'updateShifts'])->name('projects.shifts.update');
+    
+    Route::resource('shifts', \App\Http\Controllers\Admin\ShiftController::class)->except(['show']);
+
+    Route::get('projects/{project}/pkwt', [AdminProjectController::class, 'editPkwt'])->name('projects.pkwt.edit');
+    Route::put('projects/{project}/pkwt', [AdminProjectController::class, 'updatePkwt'])->name('projects.pkwt.update');
 
     Route::get('reports/attendance', [AttendanceReportController::class, 'index'])->name('reports.attendance');
     Route::get('reports/attendance/export-excel', [AttendanceReportController::class, 'exportExcel'])->name('reports.attendance.exportExcel');
@@ -85,6 +92,12 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN'])->prefix('admi
     Route::get('pkwt', static function () {
         return view('admin.pkwt.index');
     })->name('pkwt.index');
+
+    Route::get('hrd/applications', [\App\Http\Controllers\Admin\JobApplicationController::class, 'index'])->name('hrd.applications');
+    Route::get('hrd/rejected', [\App\Http\Controllers\Admin\JobApplicationController::class, 'index'])->name('hrd.rejected');
+    Route::get('hrd/applications/{application}', [\App\Http\Controllers\Admin\JobApplicationController::class, 'show'])->name('hrd.applications.show');
+    Route::put('hrd/applications/{application}/status', [\App\Http\Controllers\Admin\JobApplicationController::class, 'updateStatus'])->name('hrd.applications.status');
+    Route::delete('hrd/applications/{application}', [\App\Http\Controllers\Admin\JobApplicationController::class, 'destroy'])->name('hrd.applications.destroy');
 
     // CMS Routes
     Route::resource('cms-contents', \App\Http\Controllers\Admin\CmsContentController::class)

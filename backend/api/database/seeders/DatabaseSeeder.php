@@ -80,11 +80,11 @@ class DatabaseSeeder extends Seeder
         }
 
         User::updateOrCreate(
-            ['username' => 'superadmin'],
+            ['username' => 'itjsmu'],
             [
                 'name' => 'Super Administrator',
-                'email' => 'superadmin@example.com',
-                'password' => Hash::make('password'),
+                'email' => 'itjsmu@example.com',
+                'password' => Hash::make('*Jsmu@378'),
                 'role' => User::ROLE_SUPERADMIN,
                 'active_project_id' => $project->id,
             ]
@@ -95,7 +95,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Administrator',
                 'email' => 'admin@example.com',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('*Jsmu@378'),
                 'role' => User::ROLE_ADMIN,
                 'active_project_id' => $project->id,
             ]
@@ -106,7 +106,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Guard 1',
                 'email' => 'guard1@example.com',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('*Jsmu@378'),
                 'role' => User::ROLE_GUARD,
                 'active_project_id' => $project->id,
             ]
