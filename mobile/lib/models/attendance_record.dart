@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 class AttendanceRecord {
   const AttendanceRecord({
     required this.id,
@@ -35,7 +37,7 @@ class AttendanceRecord {
       shiftId: json['shift_id'] as int,
       type: json['type'] as String? ?? '',
       occurredAt: json['occurred_at'] != null
-          ? DateTime.tryParse(json['occurred_at'] as String)
+          ? DateFormat('dd-MM-yyyy HH:mm').parse(json['occurred_at'] as String)
           : null,
       latitude: json['latitude'] != null
           ? double.tryParse(json['latitude'].toString())
@@ -57,7 +59,9 @@ class AttendanceRecord {
       'project_id': projectId,
       'shift_id': shiftId,
       'type': type,
-      'occurred_at': occurredAt?.toIso8601String(),
+      'occurred_at': occurredAt != null 
+          ? DateFormat('dd-MM-yyyy HH:mm').format(occurredAt!)
+          : null,
       'latitude': latitude,
       'longitude': longitude,
       'selfie_photo_path': selfiePhotoPath,

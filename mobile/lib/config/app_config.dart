@@ -12,7 +12,7 @@ class AppConfig {
   //);
 //});
 final appConfigProvider = Provider<AppConfig>((ref) {
-       return const AppConfig(
-         apiBaseUrl: 'http://192.168.0.75:8000/api', // ganti dengan IP PC Anda
-       );
-     });
+  return const AppConfig(
+    apiBaseUrl: 'https://guard.jsmu.co.id/api',
+  );
+});

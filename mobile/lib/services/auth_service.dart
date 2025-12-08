@@ -1,16 +1,24 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/auth_token.dart';
 import '../models/user.dart';
 import 'api_client.dart';
+import 'secure_storage_service.dart';
+import 'connectivity_service.dart';
 
 typedef LoginResult = ({AuthToken authToken, User user});
 
+const _userCacheKey = 'cached_user_profile';
+
 class AuthService {
-  AuthService(this._apiClient);
+  AuthService(this._apiClient, this._storage, this._connectivity);
 
   final ApiClient _apiClient;
+  final SecureStorageService _storage;
+  final ConnectivityService _connectivity;
 
   Future<LoginResult> login({
     required String username,
@@ -62,22 +70,61 @@ class AuthService {
     final user = User.fromJson(userJson);
     final authToken = AuthToken(token: tokenStr);
 
+    // Cache user data immediately after login
+    await _cacheUser(user);
+
     return (authToken: authToken, user: user);
   }
 
   Future<User> fetchMe() async {
-    final Response<Map<String, dynamic>> response =
-        await _apiClient.get<Map<String, dynamic>>('/me');
-
-    final body = response.data;
-    if (body == null) {
-      throw ApiException(
-        'Respons kosong dari server.',
-        statusCode: response.statusCode,
-      );
+    // Check connectivity
+    final isOnline = await _connectivity.isOnline();
+    if (!isOnline) {
+      final cached = await _loadCachedUser();
+      if (cached != null) return cached;
+      // If offline and no cache, we can't do anything, but likely 
+      // the caller handles the error.
+      throw ApiException('Offline dan tidak ada data user tersimpan.');
     }
 
-    return User.fromJson(body);
+    try {
+      final Response<Map<String, dynamic>> response =
+          await _apiClient.get<Map<String, dynamic>>('/me');
+
+      final body = response.data;
+      if (body == null) {
+        throw ApiException(
+          'Respons kosong dari server.',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final user = User.fromJson(body);
+      await _cacheUser(user);
+      return user;
+    } catch (e) {
+      // If fetch fails (even if "online"), try cache fallback
+      final cached = await _loadCachedUser();
+      if (cached != null) return cached;
+      rethrow;
+    }
+  }
+
+  Future<void> _cacheUser(User user) async {
+    try {
+      final raw = jsonEncode(user.toJson());
+      await _storage.writeRaw(_userCacheKey, raw);
+    } catch (_) {}
+  }
+
+  Future<User?> _loadCachedUser() async {
+    try {
+      final raw = await _storage.readRaw(_userCacheKey);
+      if (raw != null && raw.isNotEmpty) {
+        return User.fromJson(jsonDecode(raw));
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<void> remoteLogout() async {
@@ -86,10 +133,13 @@ class AuthService {
     } on ApiException {
       // Abaikan error logout remote, tetap lanjut bersihkan lokal.
     }
+    await _storage.writeRaw(_userCacheKey, ''); // Clear cache
   }
 }
 
 final authServiceProvider = Provider<AuthService>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return AuthService(apiClient);
+  final storage = ref.watch(secureStorageServiceProvider);
+  final connectivity = ref.watch(connectivityServiceProvider);
+  return AuthService(apiClient, storage, connectivity);
 });

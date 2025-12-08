@@ -20,10 +20,12 @@ class ApiException implements Exception {
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
 
+  // Reduced timeouts for faster failure in flaky networks
   final options = BaseOptions(
     baseUrl: config.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 15),
+    connectTimeout: const Duration(seconds: 3),
+    receiveTimeout: const Duration(seconds: 5),
+    sendTimeout: const Duration(seconds: 5),
   );
 
   final dio = Dio(options);
@@ -61,10 +63,11 @@ class ApiClient {
   Future<Response<T>> get<T>(
     String path, {
     Map<String, dynamic>? queryParameters,
+    Options? options,
   }) async {
     try {
       final response =
-          await _dio.get<T>(path, queryParameters: queryParameters);
+          await _dio.get<T>(path, queryParameters: queryParameters, options: options);
       return response;
     } on DioException catch (e) {
       throw _toApiException(e);
@@ -75,12 +78,14 @@ class ApiClient {
     String path, {
     Object? data,
     Map<String, dynamic>? queryParameters,
+    Options? options,
   }) async {
     try {
       final response = await _dio.post<T>(
         path,
         data: data,
         queryParameters: queryParameters,
+        options: options,
       );
       return response;
     } on DioException catch (e) {

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -16,6 +18,19 @@ class OfflineQueueItemType {
   static const leaveRequest = 'leave_request';
 }
 
+/// Event emitted when sync state changes
+class SyncEvent {
+  final int pendingCount;
+  final int syncedCount;
+  final bool isComplete;
+  
+  const SyncEvent({
+    required this.pendingCount,
+    required this.syncedCount,
+    required this.isComplete,
+  });
+}
+
 class OfflineQueueService {
   OfflineQueueService(this._storage, this._apiClient);
 
@@ -23,6 +38,10 @@ class OfflineQueueService {
   final ApiClient _apiClient;
 
   bool _syncing = false;
+  
+  // Stream controller to notify UI when sync state changes
+  final _syncController = StreamController<SyncEvent>.broadcast();
+  Stream<SyncEvent> get onSyncStateChanged => _syncController.stream;
 
   bool isOfflineError(ApiException e) {
     return e.statusCode == null && e.data == null;
@@ -56,6 +75,13 @@ class OfflineQueueService {
     final queue = await _loadQueue();
     queue.add(item);
     await _saveQueue(queue);
+    
+    // Notify UI that an item was added
+    _syncController.add(SyncEvent(
+      pendingCount: queue.length,
+      syncedCount: 0,
+      isComplete: false,
+    ));
   }
 
   Future<void> _removeItem(String id) async {
@@ -76,6 +102,7 @@ class OfflineQueueService {
     required String mode,
     String? note,
     required String selfiePath,
+    String? occurredAt,
   }) async {
     final id = '${OfflineQueueItemType.attendanceClockIn}-${DateTime.now().millisecondsSinceEpoch}';
     await _addItem({
@@ -88,6 +115,7 @@ class OfflineQueueService {
         'mode': mode,
         'note': note,
         'selfie_path': selfiePath,
+        'occurred_at': occurredAt,
       },
     });
   }
@@ -98,6 +126,7 @@ class OfflineQueueService {
     required double longitude,
     String? note,
     String? selfiePath,
+    String? occurredAt,
   }) async {
     final id = '${OfflineQueueItemType.attendanceClockOut}-${DateTime.now().millisecondsSinceEpoch}';
     await _addItem({
@@ -109,6 +138,7 @@ class OfflineQueueService {
         'longitude': longitude,
         'note': note,
         'selfie_path': selfiePath,
+        'occurred_at': occurredAt,
       },
     });
   }
@@ -122,6 +152,8 @@ class OfflineQueueService {
     required double latitude,
     required double longitude,
     String? photoPath,
+    String? type,
+    String? occurredAt,
   }) async {
     final id = '${OfflineQueueItemType.patrolLog}-${DateTime.now().millisecondsSinceEpoch}';
     await _addItem({
@@ -136,6 +168,8 @@ class OfflineQueueService {
         'latitude': latitude,
         'longitude': longitude,
         'photo_path': photoPath,
+        'type': type,
+        'occurred_at': occurredAt,
       },
     });
   }
@@ -168,50 +202,118 @@ class OfflineQueueService {
       var queue = await _loadQueue();
       if (queue.isEmpty) return;
 
-      for (final item in List<Map<String, dynamic>>.from(queue)) {
+      final pendingItems = List<Map<String, dynamic>>.from(queue);
+      final processedIds = <String>[];
+
+      // Separate items by type for parallel processing
+      final independentItems = <Map<String, dynamic>>[];
+      final sequentialItems = <Map<String, dynamic>>[];
+
+      for (final item in pendingItems) {
+        final type = item['type'] as String?;
+        if (type == OfflineQueueItemType.patrolLog || 
+            type == OfflineQueueItemType.leaveRequest) {
+          independentItems.add(item);
+        } else {
+          sequentialItems.add(item);
+        }
+      }
+
+      // 1. Process independent items in parallel (Patrol, Leave)
+      // Use Future.wait for massive speedup
+      await Future.wait(independentItems.map((item) async {
         final id = item['id'] as String?;
         final type = item['type'] as String?;
         final data = item['data'] as Map<String, dynamic>?;
+
         if (id == null || type == null || data == null) {
-          await _removeItem(id ?? '');
-          queue = await _loadQueue();
+          // processedIds.add(id ?? ''); // Don't modify processedIds in parallel
+          // Because list is not thread-safe in some contexts, though Dart is single threaded event loop
+          // But to be safe and clean, we should return the ID if successful
+          return;
+        }
+
+        try {
+          if (type == OfflineQueueItemType.patrolLog) {
+            await _syncPatrolLog(data);
+          } else if (type == OfflineQueueItemType.leaveRequest) {
+            await _syncLeaveRequest(data);
+          }
+          processedIds.add(id);
+        } catch (e) {
+          // Only skip if it's NOT an offline error (meaning it's a server error we might want to retry or ignore)
+          // But if it IS an offline error, we should stop syncing.
+          if (e is ApiException && isOfflineError(e)) {
+             // Connection dropped during sync, stop the parallel loop by rethrowing
+             // or we can simply continue to next loop but we want to break early.
+             // In map() we cannot break. We should just return/continue.
+             // But to stop OTHER tasks, we rely on them failing too.
+             // Since we can't break a Future.wait easily without throwing:
+             developer.log('Sync aborted due to offline error.');
+             return;
+          }
+          // If it's a data error (4xx, 5xx), we might want to remove it or keep it.
+          // For now, we keep it to be safe, but in production we should have a retry limit.
+        }
+      }));
+
+      // 2. Process sequential items one by one (Attendance)
+      // Strict order is important for clock-in / clock-out
+      for (final item in sequentialItems) {
+        final id = item['id'] as String?;
+        final type = item['type'] as String?;
+        final data = item['data'] as Map<String, dynamic>?;
+        
+        if (id == null || type == null || data == null) {
+          processedIds.add(id ?? '');
           continue;
         }
 
         try {
-          switch (type) {
-            case OfflineQueueItemType.attendanceClockIn:
-              await _syncAttendanceClockIn(data);
-              break;
-            case OfflineQueueItemType.attendanceClockOut:
-              await _syncAttendanceClockOut(data);
-              break;
-            case OfflineQueueItemType.patrolLog:
-              await _syncPatrolLog(data);
-              break;
-            case OfflineQueueItemType.leaveRequest:
-              await _syncLeaveRequest(data);
-              break;
-            default:
-              break;
+          if (type == OfflineQueueItemType.attendanceClockIn) {
+             await _syncAttendanceClockIn(data);
+          } else if (type == OfflineQueueItemType.attendanceClockOut) {
+             await _syncAttendanceClockOut(data);
           }
-
-          await _removeItem(id);
-          queue = await _loadQueue();
+          processedIds.add(id);
         } on ApiException catch (e) {
           if (isOfflineError(e)) {
+            // Stop sequential sync if offline
             break;
           }
-
-          await _removeItem(id);
-          queue = await _loadQueue();
+          processedIds.add(id); // Skip bad request
         } catch (_) {
-          break;
+           processedIds.add(id); // Skip unknown error
         }
       }
+
+      // Batch remove processed items
+      if (processedIds.isNotEmpty) {
+         await _removeItems(processedIds);
+         
+         // Notify UI that items were synced
+         final remainingCount = await getPendingCount();
+         _syncController.add(SyncEvent(
+           pendingCount: remainingCount,
+           syncedCount: processedIds.length,
+           isComplete: remainingCount == 0,
+         ));
+         
+         developer.log(
+           'Sync complete: ${processedIds.length} items synced, $remainingCount remaining',
+           name: 'OfflineQueueService',
+         );
+      }
+
     } finally {
       _syncing = false;
     }
+  }
+
+  Future<void> _removeItems(List<String> ids) async {
+     final queue = await _loadQueue();
+     queue.removeWhere((item) => ids.contains(item['id']));
+     await _saveQueue(queue);
   }
 
   Future<void> _syncAttendanceClockIn(Map<String, dynamic> data) async {
@@ -222,6 +324,13 @@ class OfflineQueueService {
       'mode': data['mode'],
     };
 
+    if (data['occurred_at'] != null) {
+      map['occurred_at'] = data['occurred_at'];
+    } else if (data['created_at'] != null) {
+      // Backward compatibility for old queue items
+      map['occurred_at'] = data['created_at'];
+    }
+
     if (data['note'] != null && (data['note'] as String).isNotEmpty) {
       map['note'] = data['note'];
     }
@@ -234,6 +343,8 @@ class OfflineQueueService {
           selfiePath,
           filename: 'selfie.jpg',
         );
+      } else {
+        // Handle missing file case gracefully
       }
     }
 
@@ -241,6 +352,10 @@ class OfflineQueueService {
     await _apiClient.post<dynamic>(
       '/attendance/clock-in',
       data: formData,
+      options: Options(
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
     );
   }
 
@@ -251,6 +366,13 @@ class OfflineQueueService {
       'longitude': data['longitude'],
     };
 
+    if (data['occurred_at'] != null) {
+      map['occurred_at'] = data['occurred_at'];
+    } else if (data['created_at'] != null) {
+      // Backward compatibility
+      map['occurred_at'] = data['created_at'];
+    }
+
     if (data['note'] != null && (data['note'] as String).isNotEmpty) {
       map['note'] = data['note'];
     }
@@ -263,6 +385,8 @@ class OfflineQueueService {
           selfiePath,
           filename: 'selfie.jpg',
         );
+      } else {
+        // Handle missing file case gracefully
       }
     }
 
@@ -270,6 +394,10 @@ class OfflineQueueService {
     await _apiClient.post<dynamic>(
       '/attendance/clock-out',
       data: formData,
+      options: Options(
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
     );
   }
 
@@ -281,7 +409,12 @@ class OfflineQueueService {
       'post_name': data['post_name'],
       'latitude': data['latitude'],
       'longitude': data['longitude'],
+      'type': data['type'],
     };
+
+    if (data['occurred_at'] != null) {
+      map['occurred_at'] = data['occurred_at'];
+    }
 
     if (data['description'] != null &&
         (data['description'] as String).isNotEmpty) {
@@ -303,6 +436,10 @@ class OfflineQueueService {
     await _apiClient.post<dynamic>(
       '/patrol/logs',
       data: formData,
+      options: Options(
+        sendTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
     );
   }
 

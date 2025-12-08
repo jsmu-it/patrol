@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/auth_service.dart';
 import '../../services/secure_storage_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/connectivity_service.dart';
+import '../../services/offline_queue_service.dart';
 import 'auth_state.dart';
 import '../../services/api_client.dart';
 
@@ -19,11 +21,33 @@ final authNotifierProvider =
 
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier(this._ref, this._authService, this._secureStorage)
-      : super(AuthState.initial());
+      : super(AuthState.initial()) {
+    _initConnectivityListener();
+  }
 
   final Ref _ref;
   final AuthService _authService;
   final SecureStorageService _secureStorage;
+  StreamSubscription? _connectivitySubscription;
+
+  void _initConnectivityListener() {
+    final connectivity = _ref.read(connectivityServiceProvider);
+    _connectivitySubscription =
+        connectivity.onConnectivityChanged.listen((results) async {
+      final isOnline = await connectivity.isOnline();
+      if (isOnline && state.status == AuthStatus.authenticated) {
+        // Trigger sync and refresh when back online
+        await _ref.read(offlineQueueServiceProvider).sync();
+        await refreshCurrentUser();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> loadFromStorage() async {
     final token = await _secureStorage.getToken();
@@ -35,10 +59,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     _ref.read(authTokenProvider.notifier).state = token;
-    state = state.copyWith(status: AuthStatus.authenticated);
-
-    // Fetch user data immediately
-    await refreshCurrentUser();
+    
+    // Try to load cached user first so UI is instant
+    try {
+        // We can access the private method _loadCachedUser via a public getter or
+        // just rely on refreshCurrentUser returning cached data if offline
+        // but here we want to be explicit if possible.
+        // For now, refreshCurrentUser already handles "fail-fast" by checking cache.
+        await refreshCurrentUser();
+        
+        // Only set authenticated AFTER we have some user data (cached or real)
+        // or if we at least have a token.
+        state = state.copyWith(status: AuthStatus.authenticated);
+    } catch (e) {
+        // Even if fetching user fails completely, we still have a token,
+        // so we stay authenticated but maybe with empty user.
+        state = state.copyWith(status: AuthStatus.authenticated);
+    }
 
     // Jangan blok UI saat init Firebase/FCM; jalankan di background.
     unawaited(

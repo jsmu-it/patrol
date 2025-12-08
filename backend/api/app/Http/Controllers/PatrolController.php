@@ -98,9 +98,10 @@ class PatrolController extends Controller
             ? $request->file('photo')->store('patrol/photos', 'public')
             : null;
 
+        // Parse custom format: d-m-Y H:i
         $occurredAt = isset($data['occurred_at'])
-            ? CarbonImmutable::parse($data['occurred_at'])
-            : CarbonImmutable::now();
+            ? CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC')
+            : CarbonImmutable::now('UTC');
 
         $log = PatrolLog::create([
             'user_id' => $user->id,

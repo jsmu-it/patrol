@@ -67,6 +67,8 @@ class _PatrolFormScreenState extends ConsumerState<PatrolFormScreen> {
 
       if (mounted) {
         setState(() {
+          // Try to get title and post_name if available, even offline
+          // If offline, this relies on getCheckpoint returning cached data
           if (data['title'] != null) _titleController.text = data['title'];
           if (data['post_name'] != null) {
             _postNameController.text = data['post_name'];
@@ -269,7 +271,8 @@ class _PatrolFormScreenState extends ConsumerState<PatrolFormScreen> {
     final notifier = ref.read(patrolNotifierProvider.notifier);
 
     try {
-      final position = await locationService.getCurrentPosition();
+      // Use quick position for faster response
+      final position = await locationService.getQuickPosition();
 
       final message = await notifier.submit(
         projectId: user!.activeProjectId!,

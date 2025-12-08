@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../config/timezone_helper.dart';
 import '../../../state/attendance/attendance_history_providers.dart';
 
 class AttendanceHistoryScreen extends ConsumerStatefulWidget {
@@ -14,8 +15,8 @@ class AttendanceHistoryScreen extends ConsumerStatefulWidget {
 
 class _AttendanceHistoryScreenState
     extends ConsumerState<AttendanceHistoryScreen> {
-  final _dateFormat = DateFormat('dd MMM yyyy');
-  final _timeFormat = DateFormat('HH:mm');
+  final _dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
+  final _timeFormat = DateFormat('HH:mm', 'id_ID');
 
   @override
   void initState() {
@@ -95,7 +96,9 @@ class _AttendanceHistoryScreenState
                   itemCount: state.records.length,
                   itemBuilder: (context, index) {
                     final record = state.records[index];
+                    // Removed TimezoneHelper usage because backend returns formatted local string
                     final occurredAt = record.occurredAt;
+                        
                     final dateStr =
                         occurredAt != null ? _dateFormat.format(occurredAt) : '-';
                     final timeStr =

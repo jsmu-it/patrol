@@ -58,9 +58,10 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
+        // Parse custom format: d-m-Y H:i
         $occurredAt = isset($data['occurred_at'])
-            ? CarbonImmutable::parse($data['occurred_at'])
-            : CarbonImmutable::now();
+            ? CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC')
+            : CarbonImmutable::now('UTC');
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,
@@ -99,9 +100,10 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
+        // Parse custom format: d-m-Y H:i
         $occurredAt = isset($data['occurred_at'])
-            ? CarbonImmutable::parse($data['occurred_at'])
-            : CarbonImmutable::now();
+            ? CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC')
+            : CarbonImmutable::now('UTC');
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,

@@ -130,7 +130,20 @@ class ProfileScreen extends ConsumerWidget {
   Widget _buildProfileAvatar(User user, String filesBaseUrl) {
     String? url;
     if (user.profilePhotoPath != null && user.profilePhotoPath!.isNotEmpty) {
-      url = '$filesBaseUrl/storage/${user.profilePhotoPath}';
+      // Ensure no double slashes when combining baseUrl and path
+      final baseUrl = filesBaseUrl.endsWith('/')
+          ? filesBaseUrl.substring(0, filesBaseUrl.length - 1)
+          : filesBaseUrl;
+      final path = user.profilePhotoPath!.startsWith('/')
+          ? user.profilePhotoPath!.substring(1)
+          : user.profilePhotoPath!;
+      
+      // Check if path already contains 'storage/' to avoid duplication
+      if (path.startsWith('storage/')) {
+        url = '$baseUrl/$path';
+      } else {
+        url = '$baseUrl/storage/$path';
+      }
     } else if (user.profilePhotoUrl != null && user.profilePhotoUrl!.isNotEmpty) {
       url = user.profilePhotoUrl;
     }
@@ -141,7 +154,7 @@ class ProfileScreen extends ConsumerWidget {
       backgroundImage: url != null ? NetworkImage(url) : null,
       onBackgroundImageError: url != null
           ? (exception, stackTrace) {
-              // Handle error, maybe fallback?
+              debugPrint('Failed to load image: $url');
             }
           : null,
       child: url == null ? const Icon(Icons.person, size: 40) : null,

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,6 +13,7 @@ import '../../../models/user.dart';
 import '../../../config/app_config.dart';
 import '../../../routes/app_router.dart';
 import '../../../services/attendance_service.dart';
+import '../../../services/connectivity_service.dart';
 import '../../../services/location_service.dart';
 import '../../../services/offline_queue_service.dart';
 import '../../../services/shift_service.dart';
@@ -24,7 +28,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   late Future<List<Shift>> _shiftsFuture;
   late Future<List<AttendanceRecord>> _recentAttendanceFuture;
 
@@ -33,20 +37,136 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Shift? _cachedDefaultShift;
   String _mode = 'normal'; // 'normal' (WFO) atau 'dinas'
 
-  final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-  final DateFormat _timeFormat = DateFormat('HH:mm');
+  final DateFormat _dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
+  final DateFormat _timeFormat = DateFormat('HH:mm', 'id_ID');
+
+  // Stream subscriptions for auto-refresh
+  StreamSubscription<SyncEvent>? _syncSubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  int _pendingCount = 0;
+  bool _wasOffline = false;
+
+  // Local attendance state for offline support
+  // This tracks today's attendance even when offline
+  bool? _localClockedIn; // null = use server data, true/false = use local
+  DateTime? _localClockInTime;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     final apiBase = ref.read(appConfigProvider).apiBaseUrl;
     _filesBaseUrl = apiBase.replaceFirst(RegExp(r'/api/?$'), '');
     _shiftsFuture = ref.read(shiftServiceProvider).getAvailableShifts();
     _recentAttendanceFuture = _loadRecentAttendance();
 
-    Future.microtask(
-      () => ref.read(offlineQueueServiceProvider).sync(),
-    );
+    // Initial pending count
+    _loadPendingCount();
+
+    // Listen for sync events to refresh UI
+    final offlineQueue = ref.read(offlineQueueServiceProvider);
+    _syncSubscription = offlineQueue.onSyncStateChanged.listen(_onSyncEvent);
+
+    // Listen for connectivity changes
+    final connectivity = ref.read(connectivityServiceProvider);
+    _connectivitySubscription = connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+
+    // Initial sync
+    Future.microtask(() => offlineQueue.sync());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _syncSubscription?.cancel();
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came back to foreground - sync and refresh
+      debugPrint('App resumed - syncing and refreshing...');
+      ref.read(offlineQueueServiceProvider).sync();
+      _loadPendingCount();
+      // Delay refresh to allow sync to complete
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _refreshAll();
+      });
+    }
+  }
+
+  Future<void> _loadPendingCount() async {
+    final count = await ref.read(offlineQueueServiceProvider).getPendingCount();
+    if (mounted) {
+      setState(() => _pendingCount = count);
+    }
+  }
+
+  void _onSyncEvent(SyncEvent event) {
+    if (!mounted) return;
+    
+    setState(() {
+      _pendingCount = event.pendingCount;
+    });
+
+    // If items were synced, refresh attendance history and button state
+    if (event.syncedCount > 0) {
+      // Clear local state so we use fresh server data
+      _localClockedIn = null;
+      _localClockInTime = null;
+      _refreshAll();
+    }
+    
+    // If all items synced (queue empty), ensure UI is fully refreshed
+    if (event.isComplete && event.pendingCount == 0) {
+      _localClockedIn = null;
+      _localClockInTime = null;
+      _refreshAll();
+    }
+  }
+
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
+    final isOffline = results.contains(ConnectivityResult.none);
+    
+    if (isOffline) {
+      _wasOffline = true;
+      return;
+    }
+    
+    if (_wasOffline) {
+      // Just came back online - trigger sync immediately and refresh
+      debugPrint('Back online - syncing and refreshing...');
+      final queue = ref.read(offlineQueueServiceProvider);
+      
+      // Sync immediately
+      queue.sync().then((_) {
+        // Refresh after sync completes
+        if (mounted) {
+          _loadPendingCount();
+          _refreshAll();
+        }
+      });
+      
+      // Also refresh after short delay as fallback
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          _loadPendingCount();
+        }
+      });
+      
+      _wasOffline = false;
+    }
+  }
+
+  void _refreshAll() {
+    setState(() {
+      _shiftsFuture = ref.read(shiftServiceProvider).getAvailableShifts();
+      _recentAttendanceFuture = _loadRecentAttendance();
+    });
+    _loadPendingCount();
   }
 
   Future<List<AttendanceRecord>> _loadRecentAttendance() async {
@@ -65,218 +185,130 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
-    final offlineQueue = ref.watch(offlineQueueServiceProvider);
     final user = authState.user;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA), // Light grey background
       drawer: _buildDrawer(context),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context, user),
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Selamat datang, ${user?.name ?? '-'}',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildAttendanceButtons(context),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _showPatrolOptions,
-                        child: const Text('PATROL'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    FutureBuilder<int>(
-                      future: offlineQueue.getPendingCount(),
-                      builder: (ctx, snapshot) {
-                        final count = snapshot.data ?? 0;
-                        return Row(
-                          children: [
-                            Icon(
-                              Icons.cloud_off,
-                              size: 18,
-                              color: count > 0 ? Colors.orange : Colors.grey,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Antrian offline: $count',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    count > 0 ? Colors.orange : Colors.grey,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    _buildRecentHistorySection(context),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAttendanceButtons(BuildContext context) {
-    return FutureBuilder<List<AttendanceRecord>>(
-      future: _recentAttendanceFuture,
-      builder: (context, snapshot) {
-        bool isClockedIn = false;
-
-        if (snapshot.hasData && snapshot.data != null) {
-          // Sort by time descending to find the very last action
-          final records = List<AttendanceRecord>.from(snapshot.data!);
-          records.sort((a, b) {
-            final tA = a.occurredAt ?? DateTime(2000);
-            final tB = b.occurredAt ?? DateTime(2000);
-            return tB.compareTo(tA);
-          });
-
-          // Check records from today only
-          final today = DateTime.now();
-          final todayRecords = records.where((r) {
-            final t = r.occurredAt;
-            return t != null &&
-                t.year == today.year &&
-                t.month == today.month &&
-                t.day == today.day;
-          }).toList();
-
-          if (todayRecords.isNotEmpty) {
-            final lastRecord = todayRecords.first;
-            if (lastRecord.type == 'clock_in') {
-              isClockedIn = true;
-            }
-          }
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              child: ElevatedButton(
-                onPressed: isClockedIn
-                    ? null
-                    : () => _startAttendanceFlow(true),
-                style: isClockedIn
-                    ? ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade300,
-                        foregroundColor: Colors.grey,
-                      )
-                    : null,
-                child: const Text('MASUK'),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: isClockedIn
-                    ? () => _startAttendanceFlow(false)
-                    : null,
-                style: !isClockedIn
-                    ? OutlinedButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                        side: const BorderSide(color: Colors.grey),
-                      )
-                    : null,
-                child: const Text('KELUAR'),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, User? user) {
-    const headerHeight = 260.0;
-    const blueHeight = 200.0;
-
-    return SizedBox(
-      height: headerHeight,
-      child: Stack(
-        alignment: Alignment.topCenter,
+      body: Stack(
         children: [
+          // Header Background
           Container(
-            height: blueHeight,
-            width: double.infinity,
+            height: 220,
             decoration: const BoxDecoration(
-              color: Color(0xFF0C6CF2),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(40),
-                bottomRight: Radius.circular(40),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0C6CF2), Color(0xFF004AAD)],
               ),
-            ),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  Builder(
-                    builder: (ctx) => IconButton(
-                      icon: const Icon(Icons.menu, color: Colors.white),
-                      onPressed: () => Scaffold.of(ctx).openDrawer(),
-                    ),
-                  ),
-                  const Spacer(),
-                  Image.asset(
-                    'assets/images/logo.png',
-                    height: 32,
-                  ),
-                ],
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
               ),
             ),
           ),
-          Positioned(
-            bottom: 0,
+          SafeArea(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    border: Border.all(
-                      color: const Color(0xFF0C6CF2),
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      const BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
+                // Top Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Builder(
+                        builder: (ctx) => IconButton(
+                          icon: const Icon(Icons.menu, color: Colors.white),
+                          onPressed: () => Scaffold.of(ctx).openDrawer(),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _dateFormat.format(DateTime.now()),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined,
+                            color: Colors.white),
+                        onPressed: () {
+                          // TODO: Implement notifications
+                        },
                       ),
                     ],
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _buildProfileImage(context, user),
                 ),
-                const SizedBox(height: 8),
-                if (user != null)
-                  Text(
-                    user.name.isNotEmpty ? user.name : 'Tanpa Nama',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Greeting & Profile
+                          _buildGreetingSection(context, user),
+                          const SizedBox(height: 24),
+
+                          // Main Status Card (Dynamic)
+                          _buildDynamicStatusCard(context),
+                          
+                          // Offline Indicator (if needed) - uses reactive state
+                          if (_pendingCount > 0)
+                            Container(
+                              margin: const EdgeInsets.only(top: 16, bottom: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.cloud_off,
+                                      size: 16, color: Colors.orange),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '$_pendingCount data belum terkirim (Offline)',
+                                      style: TextStyle(
+                                          color: Colors.orange.shade800,
+                                          fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          
+                          const SizedBox(height: 24),
+
+                          // Menu Grid
+                          Text(
+                            'Menu Utama',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildMenuGrid(context),
+
+                          const SizedBox(height: 24),
+
+                          // Recent History
+                          _buildRecentHistorySection(context),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
                   ),
+                ),
               ],
             ),
           ),
@@ -285,31 +317,336 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildProfileImage(BuildContext context, User? user) {
+  Widget _buildGreetingSection(BuildContext context, User? user) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Halo, Petugas',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                user?.name ?? 'Memuat...',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  user?.activeProjectName ?? 'Lokasi Belum Diset',
+                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child: _buildProfileImage(context, user, size: 56),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDynamicStatusCard(BuildContext context) {
+    return FutureBuilder<List<AttendanceRecord>>(
+      future: _recentAttendanceFuture,
+      builder: (context, snapshot) {
+        bool isClockedIn = false;
+        DateTime? clockInTime;
+
+        // First, check local state (for offline support)
+        // Local state takes precedence if set for today
+        if (_localClockedIn != null) {
+          isClockedIn = _localClockedIn!;
+          clockInTime = _localClockInTime;
+        } else if (snapshot.hasData && snapshot.data != null) {
+          // Use server data
+          final records = List<AttendanceRecord>.from(snapshot.data!);
+          // Sort descending
+          records.sort((a, b) {
+            final tA = a.occurredAt ?? DateTime(2000);
+            final tB = b.occurredAt ?? DateTime(2000);
+            return tB.compareTo(tA);
+          });
+
+          // Check today's attendance logic
+          final today = DateTime.now();
+          
+          // Get records for today
+          final todayRecords = records.where((r) {
+            final t = r.occurredAt;
+            if (t == null) return false;
+            return t.year == today.year &&
+                   t.month == today.month &&
+                   t.day == today.day;
+          }).toList();
+
+          if (todayRecords.isNotEmpty) {
+            final lastRecord = todayRecords.first;
+            if (lastRecord.type == 'clock_in') {
+              isClockedIn = true;
+              clockInTime = lastRecord.occurredAt;
+            }
+          }
+        }
+
+        // Dynamic UI Variables
+        final cardColor = isClockedIn
+            ? const Color(0xFFE8F5E9) // Light Green
+            : const Color(0xFFE3F2FD); // Light Blue
+        final accentColor = isClockedIn ? Colors.green : const Color(0xFF0C6CF2);
+        final title = isClockedIn ? 'SEDANG BERTUGAS' : 'SIAP BERTUGAS';
+        final subtitle = isClockedIn
+            ? 'Anda sudah melakukan absen masuk.'
+            : 'Silakan absen masuk untuk memulai shift.';
+        final icon = isClockedIn ? Icons.shield : Icons.login;
+        final buttonLabel = isClockedIn ? 'ABSEN KELUAR' : 'ABSEN MASUK';
+        final buttonColor = isClockedIn ? Colors.red : const Color(0xFF0C6CF2);
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: accentColor, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: accentColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (isClockedIn && clockInTime != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.access_time,
+                          size: 16, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Text(
+                        // Removed TimezoneHelper.toJakarta call
+                        'Masuk pukul ${_timeFormat.format(clockInTime!)}',
+                        style: TextStyle(
+                          color: Colors.green.shade800,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => _startAttendanceFlow(!isClockedIn),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: buttonColor,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    buttonLabel,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMenuGrid(BuildContext context) {
+    final menus = [
+      _MenuData(
+        title: 'Patroli',
+        icon: Icons.local_police_outlined,
+        color: Colors.blue,
+        onTap: _showPatrolOptions,
+      ),
+      _MenuData(
+        title: 'Izin / Cuti',
+        icon: Icons.event_note_outlined,
+        color: Colors.orange,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.leaveList),
+      ),
+      _MenuData(
+        title: 'Riwayat',
+        icon: Icons.history_edu_outlined,
+        color: Colors.purple,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.attendanceHistory),
+      ),
+      _MenuData(
+        title: 'Profil',
+        icon: Icons.person_outline,
+        color: Colors.teal,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.profile),
+      ),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.5,
+      ),
+      itemCount: menus.length,
+      itemBuilder: (ctx, index) {
+        final menu = menus[index];
+        return InkWell(
+          onTap: menu.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: menu.color.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(menu.icon, color: menu.color, size: 28),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  menu.title,
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProfileImage(BuildContext context, User? user,
+      {double size = 180}) {
     if (user == null) {
-      return _buildPlaceholderPhoto(context);
+      return _buildPlaceholderPhoto(context, size: size);
     }
 
     final url = _resolveProfilePhotoUrl(user);
     if (url == null) {
-      return _buildPlaceholderPhoto(context);
+      return _buildPlaceholderPhoto(context, size: size);
     }
 
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (ctx, error, stack) => _buildPlaceholderPhoto(context),
+    return ClipOval(
+      child: Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: size,
+        height: size,
+        errorBuilder: (ctx, error, stack) =>
+            _buildPlaceholderPhoto(context, size: size),
+      ),
     );
   }
 
-  Widget _buildPlaceholderPhoto(BuildContext context) {
-    return Center(
-      child: Text(
-        'FOTO',
-        style: Theme.of(context)
-            .textTheme
-            .titleMedium
-            ?.copyWith(letterSpacing: 2),
+  Widget _buildPlaceholderPhoto(BuildContext context, {double size = 180}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white24,
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person,
+        color: Colors.white,
+        size: size * 0.5,
       ),
     );
   }
@@ -455,7 +792,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildHistoryText(BuildContext context, AttendanceRecord record) {
-    final occurredAt = record.occurredAt?.toLocal();
+    // Removed TimezoneHelper
+    final occurredAt = record.occurredAt;
+        
     final dateStr =
         occurredAt != null ? _dateFormat.format(occurredAt) : '-';
     final timeStr =
@@ -615,12 +954,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
 
     try {
-      // 3. Get Location
+      // 3. Get Location AND Shifts in PARALLEL for speed
       final locationService = ref.read(locationServiceProvider);
-      final position = await locationService.getCurrentPosition();
-
-      // 4. Get Shifts
-      final shifts = await _shiftsFuture;
+      final results = await Future.wait([
+        locationService.getCurrentPosition(),
+        _shiftsFuture,
+      ]);
+      
+      final position = results[0] as Position;
+      final shifts = results[1] as List<Shift>;
 
       // 5. Check Radius
       final user = ref.read(authNotifierProvider).user;
@@ -935,6 +1277,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           note: note,
           selfiePath: selfiePath,
         );
+        
+        // Update local state immediately (for offline support)
+        setState(() {
+          _localClockedIn = true;
+          _localClockInTime = DateTime.now();
+        });
       } else {
         await notifier.checkOut(
           shiftId: shift.id,
@@ -943,6 +1291,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           note: note,
           selfiePath: selfiePath,
         );
+        
+        // Update local state immediately (for offline support)
+        setState(() {
+          _localClockedIn = false;
+          _localClockInTime = null;
+        });
       }
 
       if (!mounted) return;
@@ -989,6 +1343,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onTap: () => Navigator.of(ctx).pop(_PatrolOption.incident),
               ),
               ListTile(
+                leading: const Icon(Icons.history, color: Colors.blue),
+                title: const Text('Riwayat Patroli'),
+                onTap: () => Navigator.of(ctx).pop(_PatrolOption.history),
+              ),
+              ListTile(
                 leading: const Icon(Icons.sos, color: Colors.red),
                 title: const Text('SOS / Darurat'),
                 onTap: () => Navigator.of(ctx).pop(_PatrolOption.sos),
@@ -1013,6 +1372,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             checkpointCode: '',
           ),
         );
+        break;
+      case _PatrolOption.history:
+        Navigator.of(context).pushNamed(AppRoutes.patrolHistory);
         break;
       case _PatrolOption.sos:
         Navigator.of(context).pushNamed(
@@ -1039,6 +1401,20 @@ class _AttendanceFormResult {
   final String? note;
 }
 
-enum _PatrolOption { patrol, incident, sos }
+class _MenuData {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  _MenuData({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+enum _PatrolOption { patrol, incident, history, sos }
 
 
