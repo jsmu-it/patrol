@@ -58,7 +58,7 @@ class PatrolService {
     String? type,
   }) async {
     final now = DateTime.now();
-    final occurredAt = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    final occurredAt = DateFormat('dd-MM-yyyy HH:mm').format(now);
 
     // OPTIMISTIC PATTERN: Always queue first for instant response (max 2-3 seconds)
     await _offlineQueue.enqueuePatrolLog(
@@ -74,19 +74,15 @@ class PatrolService {
       occurredAt: occurredAt,
     );
 
-    // Quick connectivity check (no ping, instant)
-    final hasNetwork = await _connectivity.hasNetworkType();
-
-    if (!hasNetwork) {
-      return 'Laporan tersimpan. Akan dikirim saat online.';
-    }
-
-    // Try to sync immediately in background (fire-and-forget)
-    _offlineQueue.sync().catchError((e) {
-      developer.log('Background sync failed: $e', name: 'PatrolService');
+    // Always try to sync immediately in background
+    developer.log('Triggering sync after patrol log', name: 'PatrolService');
+    _offlineQueue.sync().then((_) {
+      developer.log('Patrol sync completed', name: 'PatrolService');
+    }).catchError((e) {
+      developer.log('Patrol sync failed: $e', name: 'PatrolService');
     });
 
-    return 'Laporan patroli berhasil.';
+    return 'Laporan patroli berhasil. Sedang mengirim ke server...';
   }
 
   Future<Map<String, dynamic>> getCheckpoint(String code) async {

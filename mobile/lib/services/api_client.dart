@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,29 +18,45 @@ class ApiException implements Exception {
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
 
-  // Reduced timeouts for faster failure in flaky networks
+  // Reasonable timeouts for production
   final options = BaseOptions(
     baseUrl: config.apiBaseUrl,
-    connectTimeout: const Duration(seconds: 3),
-    receiveTimeout: const Duration(seconds: 5),
-    sendTimeout: const Duration(seconds: 5),
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 30),
+    sendTimeout: const Duration(seconds: 30),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
   );
 
   final dio = Dio(options);
 
-  developer.log(
-    'Creating Dio with baseUrl=${options.baseUrl}',
-    name: 'ApiClient',
-  );
+  print('[ApiClient] Creating Dio with baseUrl=${options.baseUrl}');
 
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) {
         final token = ref.read(authTokenProvider);
+        print('[ApiClient] REQUEST: ${options.method} ${options.path}');
+        print('[ApiClient] Token: ${token != null ? "present (${token.length} chars)" : "null"}');
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+        // Remove Content-Type for FormData, let Dio set it automatically
+        if (options.data is FormData) {
+          options.headers.remove('Content-Type');
+          print('[ApiClient] FormData detected, removed Content-Type header');
+        }
         return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('[ApiClient] RESPONSE: ${response.statusCode} ${response.requestOptions.path}');
+        return handler.next(response);
+      },
+      onError: (error, handler) {
+        print('[ApiClient] ERROR: ${error.type} ${error.requestOptions.path} - ${error.message}');
+        return handler.next(error);
       },
     ),
   );
@@ -96,12 +110,7 @@ class ApiClient {
   ApiException _toApiException(DioException e) {
     final statusCode = e.response?.statusCode;
     final data = e.response?.data;
-    developer.log(
-      'API error: type=${e.type} status=$statusCode message=${e.message} data: $data',
-      name: 'ApiClient',
-      error: e,
-      stackTrace: e.stackTrace,
-    );
+    print('[ApiClient] API error: type=${e.type} status=$statusCode message=${e.message}');
 
     return ApiException(
       _friendlyErrorMessage(e),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -14,8 +15,11 @@ class ConnectivityService {
 
   void _init() {
     Connectivity().onConnectivityChanged.listen((results) {
+      developer.log('Connectivity changed: $results', name: 'ConnectivityService');
       if (results.contains(ConnectivityResult.none)) {
         _lastKnownOnline = false;
+      } else {
+        _lastKnownOnline = true;
       }
     });
   }
@@ -23,15 +27,20 @@ class ConnectivityService {
   /// Quick check - just network type, no ping (instant)
   Future<bool> hasNetworkType() async {
     final results = await Connectivity().checkConnectivity();
-    if (results.contains(ConnectivityResult.none)) {
+    developer.log('checkConnectivity results: $results', name: 'ConnectivityService');
+    
+    // If results is empty or only contains 'none', return false
+    if (results.isEmpty) {
+      developer.log('No connectivity results, assuming online', name: 'ConnectivityService');
+      return true; // Assume online if can't determine
+    }
+    
+    if (results.contains(ConnectivityResult.none) && results.length == 1) {
       return false;
     }
-    return results.any((r) => 
-      r == ConnectivityResult.mobile || 
-      r == ConnectivityResult.wifi ||
-      r == ConnectivityResult.ethernet ||
-      r == ConnectivityResult.vpn
-    );
+    
+    // Return true if has any network type
+    return true;
   }
 
   /// Fast online check with optional ping (max 2 seconds)

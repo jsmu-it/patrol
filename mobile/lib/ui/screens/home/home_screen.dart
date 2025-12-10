@@ -88,7 +88,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // App came back to foreground - sync and refresh
-      debugPrint('App resumed - syncing and refreshing...');
+      debugPrint('App resumed v2 - syncing...');
       ref.read(offlineQueueServiceProvider).sync();
       _loadPendingCount();
       // Delay refresh to allow sync to complete
@@ -99,9 +99,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   Future<void> _loadPendingCount() async {
-    final count = await ref.read(offlineQueueServiceProvider).getPendingCount();
+    final offlineQueue = ref.read(offlineQueueServiceProvider);
+    final count = await offlineQueue.getPendingCount();
+    
+    // Also check pending attendance type to sync button state
+    final pendingType = await offlineQueue.getLastPendingAttendanceType();
+    
     if (mounted) {
-      setState(() => _pendingCount = count);
+      setState(() {
+        _pendingCount = count;
+        // If there's a pending attendance item, update local state
+        if (pendingType != null) {
+          _localClockedIn = pendingType == 'clock_in';
+          if (_localClockedIn == true) {
+            _localClockInTime = DateTime.now();
+          }
+        }
+      });
     }
   }
 

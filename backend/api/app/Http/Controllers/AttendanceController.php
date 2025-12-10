@@ -37,19 +37,33 @@ class AttendanceController extends Controller
             ->first();
 
         if ($lastLog && $lastLog->type === AttendanceLog::TYPE_CLOCK_IN) {
-            // If the last log was a clock-in, they cannot clock-in again unless they clocked out
-            // OR unless it's been a very long time (e.g. > 24 hours), but requirements say strict check
-            return response()->json([
-                'message' => 'You are currently clocked in. Please clock out first before starting a new shift.',
-            ], 422);
+            // Check if the last clock-in was from a different day
+            $lastClockInDate = CarbonImmutable::parse($lastLog->occurred_at)->toDateString();
+            $todayDate = CarbonImmutable::now('Asia/Jakarta')->toDateString();
+            
+            if ($lastClockInDate === $todayDate) {
+                // Same day - cannot clock-in again without clock-out
+                return response()->json([
+                    'message' => 'You are currently clocked in. Please clock out first before starting a new shift.',
+                ], 422);
+            }
+            // Different day - auto mark previous as incomplete and allow new clock-in
+            // Previous attendance without clock-out is treated as incomplete
         }
 
         $data = $request->validated();
 
         if ($data['mode'] === AttendanceLog::MODE_NORMAL) {
-            if (! $this->isWithinGeofence($project, $data['latitude'], $data['longitude'])) {
+            $geofenceCheck = $this->checkGeofence($project, $data['latitude'], $data['longitude']);
+            if (! $geofenceCheck['within']) {
                 return response()->json([
-                    'message' => 'Clock in must be within project geofence for normal mode.',
+                    'message' => "Anda berada {$geofenceCheck['distance']}m dari lokasi. Maksimal {$geofenceCheck['radius']}m.",
+                    'debug' => [
+                        'your_location' => ['lat' => $data['latitude'], 'lng' => $data['longitude']],
+                        'project_location' => ['lat' => $project->latitude, 'lng' => $project->longitude],
+                        'distance_meters' => $geofenceCheck['distance'],
+                        'allowed_radius' => $geofenceCheck['radius'],
+                    ],
                 ], 422);
             }
         }
@@ -152,8 +166,14 @@ class AttendanceController extends Controller
 
     private function isWithinGeofence(Project $project, float $latitude, float $longitude): bool
     {
+        $check = $this->checkGeofence($project, $latitude, $longitude);
+        return $check['within'];
+    }
+
+    private function checkGeofence(Project $project, float $latitude, float $longitude): array
+    {
         if ($project->latitude === null || $project->longitude === null || $project->geofence_radius_meters === null) {
-            return false;
+            return ['within' => false, 'distance' => 0, 'radius' => 0];
         }
 
         $distanceMeters = $this->haversineDistance(
@@ -163,7 +183,13 @@ class AttendanceController extends Controller
             $longitude,
         );
 
-        return $distanceMeters <= (float) $project->geofence_radius_meters;
+        $radius = (float) $project->geofence_radius_meters;
+        
+        return [
+            'within' => $distanceMeters <= $radius,
+            'distance' => round($distanceMeters, 1),
+            'radius' => $radius,
+        ];
     }
 
     private function haversineDistance(float $lat1, float $lon1, float $lat2, float $lon2): float

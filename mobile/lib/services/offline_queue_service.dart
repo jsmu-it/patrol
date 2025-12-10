@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -18,7 +17,6 @@ class OfflineQueueItemType {
   static const leaveRequest = 'leave_request';
 }
 
-/// Event emitted when sync state changes
 class SyncEvent {
   final int pendingCount;
   final int syncedCount;
@@ -39,7 +37,6 @@ class OfflineQueueService {
 
   bool _syncing = false;
   
-  // Stream controller to notify UI when sync state changes
   final _syncController = StreamController<SyncEvent>.broadcast();
   Stream<SyncEvent> get onSyncStateChanged => _syncController.stream;
 
@@ -52,7 +49,6 @@ class OfflineQueueService {
     if (raw == null || raw.isEmpty) {
       return [];
     }
-
     try {
       final decoded = jsonDecode(raw);
       if (decoded is List) {
@@ -62,7 +58,6 @@ class OfflineQueueService {
             .toList();
       }
     } catch (_) {}
-
     return [];
   }
 
@@ -72,11 +67,12 @@ class OfflineQueueService {
   }
 
   Future<void> _addItem(Map<String, dynamic> item) async {
+    print('[Queue] _addItem: ${item['id']} type=${item['type']}');
     final queue = await _loadQueue();
     queue.add(item);
     await _saveQueue(queue);
+    print('[Queue] Queue now has ${queue.length} items');
     
-    // Notify UI that an item was added
     _syncController.add(SyncEvent(
       pendingCount: queue.length,
       syncedCount: 0,
@@ -93,6 +89,32 @@ class OfflineQueueService {
   Future<int> getPendingCount() async {
     final queue = await _loadQueue();
     return queue.length;
+  }
+
+  /// Returns the last pending attendance type for today ('clock_in', 'clock_out', or null)
+  Future<String?> getLastPendingAttendanceType() async {
+    final queue = await _loadQueue();
+    final today = DateTime.now();
+    
+    // Filter attendance items and find the last one for today
+    final attendanceItems = queue.where((item) {
+      final type = item['type'] as String?;
+      return type == OfflineQueueItemType.attendanceClockIn || 
+             type == OfflineQueueItemType.attendanceClockOut;
+    }).toList();
+    
+    if (attendanceItems.isEmpty) return null;
+    
+    // Get the last attendance item
+    final lastItem = attendanceItems.last;
+    final type = lastItem['type'] as String?;
+    
+    if (type == OfflineQueueItemType.attendanceClockIn) {
+      return 'clock_in';
+    } else if (type == OfflineQueueItemType.attendanceClockOut) {
+      return 'clock_out';
+    }
+    return null;
   }
 
   Future<void> enqueueAttendanceClockIn({
@@ -196,16 +218,23 @@ class OfflineQueueService {
   }
 
   Future<void> sync() async {
-    if (_syncing) return;
+    print('[Queue] sync() called, _syncing=$_syncing');
+    if (_syncing) {
+      print('[Queue] sync() skipped - already syncing');
+      return;
+    }
     _syncing = true;
     try {
       var queue = await _loadQueue();
-      if (queue.isEmpty) return;
+      print('[Queue] sync() queue has ${queue.length} items');
+      if (queue.isEmpty) {
+        print('[Queue] sync() queue is empty, returning');
+        return;
+      }
 
       final pendingItems = List<Map<String, dynamic>>.from(queue);
       final processedIds = <String>[];
 
-      // Separate items by type for parallel processing
       final independentItems = <Map<String, dynamic>>[];
       final sequentialItems = <Map<String, dynamic>>[];
 
@@ -219,19 +248,13 @@ class OfflineQueueService {
         }
       }
 
-      // 1. Process independent items in parallel (Patrol, Leave)
-      // Use Future.wait for massive speedup
+      // Process independent items in parallel
       await Future.wait(independentItems.map((item) async {
         final id = item['id'] as String?;
         final type = item['type'] as String?;
         final data = item['data'] as Map<String, dynamic>?;
 
-        if (id == null || type == null || data == null) {
-          // processedIds.add(id ?? ''); // Don't modify processedIds in parallel
-          // Because list is not thread-safe in some contexts, though Dart is single threaded event loop
-          // But to be safe and clean, we should return the ID if successful
-          return;
-        }
+        if (id == null || type == null || data == null) return;
 
         try {
           if (type == OfflineQueueItemType.patrolLog) {
@@ -239,26 +262,18 @@ class OfflineQueueService {
           } else if (type == OfflineQueueItemType.leaveRequest) {
             await _syncLeaveRequest(data);
           }
+          print('[Queue] Synced $type: $id');
           processedIds.add(id);
         } catch (e) {
-          // Only skip if it's NOT an offline error (meaning it's a server error we might want to retry or ignore)
-          // But if it IS an offline error, we should stop syncing.
+          print('[Queue] Sync error $type: $id - $e');
           if (e is ApiException && isOfflineError(e)) {
-             // Connection dropped during sync, stop the parallel loop by rethrowing
-             // or we can simply continue to next loop but we want to break early.
-             // In map() we cannot break. We should just return/continue.
-             // But to stop OTHER tasks, we rely on them failing too.
-             // Since we can't break a Future.wait easily without throwing:
-             developer.log('Sync aborted due to offline error.');
-             return;
+            print('[Queue] Sync aborted due to offline error');
+            return;
           }
-          // If it's a data error (4xx, 5xx), we might want to remove it or keep it.
-          // For now, we keep it to be safe, but in production we should have a retry limit.
         }
       }));
 
-      // 2. Process sequential items one by one (Attendance)
-      // Strict order is important for clock-in / clock-out
+      // Process sequential items (Attendance)
       for (final item in sequentialItems) {
         final id = item['id'] as String?;
         final type = item['type'] as String?;
@@ -275,34 +290,25 @@ class OfflineQueueService {
           } else if (type == OfflineQueueItemType.attendanceClockOut) {
              await _syncAttendanceClockOut(data);
           }
+          print('[Queue] Synced attendance: $id');
           processedIds.add(id);
         } on ApiException catch (e) {
-          if (isOfflineError(e)) {
-            // Stop sequential sync if offline
-            break;
-          }
-          processedIds.add(id); // Skip bad request
-        } catch (_) {
-           processedIds.add(id); // Skip unknown error
+          print('[Queue] Attendance sync error: $id - ${e.message} (${e.statusCode})');
+          if (isOfflineError(e)) break;
+        } catch (e) {
+          print('[Queue] Attendance sync unknown error: $id - $e');
         }
       }
 
-      // Batch remove processed items
       if (processedIds.isNotEmpty) {
          await _removeItems(processedIds);
-         
-         // Notify UI that items were synced
          final remainingCount = await getPendingCount();
          _syncController.add(SyncEvent(
            pendingCount: remainingCount,
            syncedCount: processedIds.length,
            isComplete: remainingCount == 0,
          ));
-         
-         developer.log(
-           'Sync complete: ${processedIds.length} items synced, $remainingCount remaining',
-           name: 'OfflineQueueService',
-         );
+         print('[Queue] Sync complete: ${processedIds.length} synced, $remainingCount remaining');
       }
 
     } finally {
@@ -327,7 +333,6 @@ class OfflineQueueService {
     if (data['occurred_at'] != null) {
       map['occurred_at'] = data['occurred_at'];
     } else if (data['created_at'] != null) {
-      // Backward compatibility for old queue items
       map['occurred_at'] = data['created_at'];
     }
 
@@ -339,22 +344,18 @@ class OfflineQueueService {
     if (selfiePath != null && selfiePath.isNotEmpty) {
       final file = File(selfiePath);
       if (await file.exists()) {
-        map['selfie'] = await MultipartFile.fromFile(
-          selfiePath,
-          filename: 'selfie.jpg',
-        );
-      } else {
-        // Handle missing file case gracefully
+        map['selfie'] = await MultipartFile.fromFile(selfiePath, filename: 'selfie.jpg');
       }
     }
 
     final formData = FormData.fromMap(map);
+    print('[Queue] Sending clock-in: shift=${data['shift_id']} lat=${data['latitude']}');
     await _apiClient.post<dynamic>(
       '/attendance/clock-in',
       data: formData,
       options: Options(
-        sendTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
   }
@@ -369,7 +370,6 @@ class OfflineQueueService {
     if (data['occurred_at'] != null) {
       map['occurred_at'] = data['occurred_at'];
     } else if (data['created_at'] != null) {
-      // Backward compatibility
       map['occurred_at'] = data['created_at'];
     }
 
@@ -381,22 +381,18 @@ class OfflineQueueService {
     if (selfiePath != null && selfiePath.isNotEmpty) {
       final file = File(selfiePath);
       if (await file.exists()) {
-        map['selfie'] = await MultipartFile.fromFile(
-          selfiePath,
-          filename: 'selfie.jpg',
-        );
-      } else {
-        // Handle missing file case gracefully
+        map['selfie'] = await MultipartFile.fromFile(selfiePath, filename: 'selfie.jpg');
       }
     }
 
     final formData = FormData.fromMap(map);
+    print('[Queue] Sending clock-out: shift=${data['shift_id']}');
     await _apiClient.post<dynamic>(
       '/attendance/clock-out',
       data: formData,
       options: Options(
-        sendTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
   }
@@ -416,8 +412,7 @@ class OfflineQueueService {
       map['occurred_at'] = data['occurred_at'];
     }
 
-    if (data['description'] != null &&
-        (data['description'] as String).isNotEmpty) {
+    if (data['description'] != null && (data['description'] as String).isNotEmpty) {
       map['description'] = data['description'];
     }
 
@@ -425,29 +420,24 @@ class OfflineQueueService {
     if (photoPath != null && photoPath.isNotEmpty) {
       final file = File(photoPath);
       if (await file.exists()) {
-        map['photo'] = await MultipartFile.fromFile(
-          photoPath,
-          filename: 'patrol_photo.jpg',
-        );
+        map['photo'] = await MultipartFile.fromFile(photoPath, filename: 'patrol_photo.jpg');
       }
     }
 
     final formData = FormData.fromMap(map);
+    print('[Queue] Sending patrol: project=${data['project_id']}');
     await _apiClient.post<dynamic>(
       '/patrol/logs',
       data: formData,
       options: Options(
-        sendTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
       ),
     );
   }
 
   Future<void> _syncLeaveRequest(Map<String, dynamic> data) async {
-    await _apiClient.post<dynamic>(
-      '/leave-requests',
-      data: data,
-    );
+    await _apiClient.post<dynamic>('/leave-requests', data: data);
   }
 }
 

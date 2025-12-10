@@ -33,7 +33,7 @@ class AttendanceService {
     required String selfiePath,
   }) async {
     final now = DateTime.now();
-    final occurredAt = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    final occurredAt = DateFormat('dd-MM-yyyy HH:mm').format(now);
 
     // OPTIMISTIC PATTERN: Always queue first for instant response
     // This ensures max 2-3 second response time
@@ -47,20 +47,15 @@ class AttendanceService {
       occurredAt: occurredAt,
     );
 
-    // Quick connectivity check (no ping, instant)
-    final hasNetwork = await _connectivity.hasNetworkType();
-    
-    if (!hasNetwork) {
-      return (message: 'Absen tersimpan. Akan dikirim saat online.');
-    }
-
-    // Try to sync immediately in background (fire-and-forget)
-    // Don't await - return to user immediately
-    _offlineQueue.sync().catchError((e) {
-      developer.log('Background sync failed: $e', name: 'AttendanceService');
+    // Always try to sync immediately in background
+    developer.log('Triggering sync after clock-in', name: 'AttendanceService');
+    _offlineQueue.sync().then((_) {
+      developer.log('Clock-in sync completed', name: 'AttendanceService');
+    }).catchError((e) {
+      developer.log('Clock-in sync failed: $e', name: 'AttendanceService');
     });
 
-    return (message: 'Absen masuk berhasil.');
+    return (message: 'Absen masuk berhasil. Sedang mengirim ke server...');
   }
 
   Future<AttendanceResult> checkOut({
@@ -71,7 +66,7 @@ class AttendanceService {
     String? selfiePath,
   }) async {
     final now = DateTime.now();
-    final occurredAt = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    final occurredAt = DateFormat('dd-MM-yyyy HH:mm').format(now);
 
     // OPTIMISTIC PATTERN: Always queue first for instant response
     await _offlineQueue.enqueueAttendanceClockOut(
@@ -83,19 +78,15 @@ class AttendanceService {
       occurredAt: occurredAt,
     );
 
-    // Quick connectivity check (no ping, instant)
-    final hasNetwork = await _connectivity.hasNetworkType();
-    
-    if (!hasNetwork) {
-      return (message: 'Absen tersimpan. Akan dikirim saat online.');
-    }
-
-    // Try to sync immediately in background (fire-and-forget)
-    _offlineQueue.sync().catchError((e) {
-      developer.log('Background sync failed: $e', name: 'AttendanceService');
+    // Always try to sync immediately in background
+    developer.log('Triggering sync after clock-out', name: 'AttendanceService');
+    _offlineQueue.sync().then((_) {
+      developer.log('Clock-out sync completed', name: 'AttendanceService');
+    }).catchError((e) {
+      developer.log('Clock-out sync failed: $e', name: 'AttendanceService');
     });
 
-    return (message: 'Absen keluar berhasil.');
+    return (message: 'Absen keluar berhasil. Sedang mengirim ke server...');
   }
 
   Future<List<AttendanceRecord>> getHistory({
