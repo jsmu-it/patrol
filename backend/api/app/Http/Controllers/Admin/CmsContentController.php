@@ -11,23 +11,30 @@ class CmsContentController extends Controller
 {
     public function index()
     {
-        $contents = CmsContent::all();
-        return view('admin.cms.contents.index', compact('contents'));
+        return redirect()->route('admin.dashboard'); // Not used directly
     }
 
-    public function edit(CmsContent $content)
+    public function edit($key)
     {
-        return view('admin.cms.contents.edit', compact('content'));
+        $content = CmsContent::firstOrCreate(
+            ['key' => $key],
+            ['title' => ucwords(str_replace('_', ' ', $key))]
+        );
+
+        return view('admin.cms.contents.edit', compact('content', 'key'));
     }
 
-    public function update(Request $request, CmsContent $content)
+    public function update(Request $request, $key)
     {
-        $data = $request->validate([
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
+        $content = CmsContent::where('key', $key)->firstOrFail();
+
+        $request->validate([
+            'title' => 'required|string|max:255',
             'body' => 'nullable|string',
             'image' => 'nullable|image|max:2048',
         ]);
+
+        $data = $request->only(['title', 'body']);
 
         if ($request->hasFile('image')) {
             if ($content->image) {
@@ -38,6 +45,6 @@ class CmsContentController extends Controller
 
         $content->update($data);
 
-        return redirect()->route('admin.cms-contents.index')->with('success', 'Content updated successfully.');
+        return back()->with('status', 'Konten berhasil diperbarui.');
     }
 }

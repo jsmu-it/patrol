@@ -10,10 +10,18 @@ use Illuminate\Support\Str;
 
 class CmsActivityController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $activities = CmsActivity::latest('date')->get();
-        return view('admin.cms.activities.index', compact('activities'));
+        $query = CmsActivity::latest('date');
+        
+        if ($request->has('type') && $request->type) {
+            $query->where('type', $request->type);
+        }
+        
+        $activities = $query->get();
+        $currentType = $request->type;
+        
+        return view('admin.cms.activities.index', compact('activities', 'currentType'));
     }
 
     public function create()

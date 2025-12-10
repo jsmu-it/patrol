@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Laravel App
+  # Laravel App (PHP-FPM) - Optimized
   app:
     build:
       context: ./backend/api
@@ -12,16 +12,49 @@ services:
     working_dir: /var/www
     volumes:
       - ./backend/api:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+      - ./docker/php/php-fpm.conf:/usr/local/etc/php-fpm.d/www.conf
+    depends_on:
+      - db
+      - redis
     networks:
       - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
-  # Web Server (Nginx)
+  # Queue Worker for Laravel (handles async jobs)
+  queue:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    image: jsmuguard-app
+    container_name: jsmuguard-queue
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-jobs=1000 --timeout=300
+    volumes:
+      - ./backend/api:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    depends_on:
+      - db
+      - redis
+      - app
+    networks:
+      - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # Web Server (Nginx) - Optimized
   webserver:
     image: nginx:alpine
     container_name: jsmuguard-nginx
     restart: unless-stopped
     ports:
-      - "80:80"  # Expose to port 80 on the server
+      - "80:80"
     volumes:
       - ./backend/api:/var/www
       - ./docker/nginx/app.conf:/etc/nginx/conf.d/default.conf
@@ -29,8 +62,12 @@ services:
       - app
     networks:
       - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
-  # Database (MySQL)
+  # Database (MySQL) - Optimized
   db:
     image: mysql:8.0
     container_name: jsmuguard-db
@@ -43,9 +80,31 @@ services:
       MYSQL_AUTHENTICATION_PLUGIN: mysql_native_password
     volumes:
       - dbdata:/var/lib/mysql
-    # No ports exposed to host to keep it secure, only accessible via network
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/mysql/logs:/var/log/mysql
     networks:
       - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis - For caching & queue
+  redis:
+    image: redis:7-alpine
+    container_name: jsmuguard-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   # PhpMyAdmin (Optional - for database management)
   pma:
@@ -59,8 +118,13 @@ services:
     environment:
       PMA_HOST: db
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      UPLOAD_LIMIT: 100M
     networks:
       - jsmuguard-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 networks:
   jsmuguard-network:
@@ -68,3 +132,4 @@ networks:
 
 volumes:
   dbdata:
+  redisdata:

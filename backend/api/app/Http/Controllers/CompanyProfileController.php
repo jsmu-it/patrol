@@ -10,13 +10,15 @@ use App\Models\CmsContent;
 use App\Models\CmsHeroSlide;
 use App\Models\CmsService;
 use App\Models\ContactMessage;
+use App\Models\Faq;
+use App\Models\Testimonial;
 use Illuminate\Http\Request;
 
 class CompanyProfileController extends Controller
 {
     private function getContent($key)
     {
-        return CmsContent::where('key', $key)->first();
+        return CmsContent::firstOrCreate(['key' => $key], ['title' => ucfirst(str_replace('_', ' ', $key))]);
     }
 
     public function home()
@@ -26,8 +28,24 @@ class CompanyProfileController extends Controller
         $services = CmsService::orderBy('order')->take(3)->get();
         $clients = CmsClient::orderBy('order')->take(6)->get();
         $activities = CmsActivity::latest('date')->take(3)->get();
+        $testimonials = Testimonial::approved()->orderByDesc('is_featured')->orderBy('order')->take(6)->get();
         
-        return view('company_profile.home', compact('heroSlides', 'services', 'clients', 'activities'));
+        return view('company_profile.home', compact('heroSlides', 'services', 'clients', 'activities', 'testimonials'));
+    }
+
+    public function faq()
+    {
+        $faqs = Faq::active()->orderBy('order')->get();
+        $categories = $faqs->pluck('category')->filter()->unique();
+
+        return view('company_profile.faq', compact('faqs', 'categories'));
+    }
+
+    public function testimonials()
+    {
+        $testimonials = Testimonial::approved()->orderByDesc('is_featured')->orderBy('order')->get();
+
+        return view('company_profile.testimonials', compact('testimonials'));
     }
 
     public function profile()
@@ -84,6 +102,11 @@ class CompanyProfileController extends Controller
     public function contact()
     {
         return view('company_profile.contact');
+    }
+
+    public function privacy()
+    {
+        return view('company_profile.privacy');
     }
 
     public function sendApplication(Request $request)

@@ -27,10 +27,10 @@
                 </div>
                     <div class="mt-4 pt-4 border-t border-gray-100">
                         <h3 class="font-semibold text-gray-800 mb-2">Description:</h3>
-                        <p class="text-gray-600 mb-4">{{ $career->description }}</p>
+                        <div class="text-gray-600 mb-4 prose prose-sm max-w-none">{!! $career->description !!}</div>
                         @if($career->requirements)
                         <h3 class="font-semibold text-gray-800 mb-2">Requirements:</h3>
-                        <p class="text-gray-600 mb-4">{{ $career->requirements }}</p>
+                        <div class="text-gray-600 mb-4 prose prose-sm max-w-none">{!! $career->requirements !!}</div>
                         @endif
                     </div>
                 </div>

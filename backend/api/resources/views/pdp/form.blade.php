@@ -13,19 +13,27 @@
         <p class="mb-4 text-gray-600">Silakan isi data berikut dengan lengkap dan benar.</p>
 
         @if(session('status'))
-            <div class="mb-4 p-3 rounded bg-green-100 text-green-800 text-xs">
-                {{ session('status') }}
+            <div id="success-notification" class="fixed top-4 right-4 z-50 p-4 rounded-lg bg-green-100 text-green-800 text-sm shadow-lg max-w-md">
+                <div class="flex items-center justify-between">
+                    <span>{{ session('status') }}</span>
+                    <button onclick="document.getElementById('success-notification').remove()" class="ml-4 text-green-600 hover:text-green-800 font-bold">&times;</button>
+                </div>
             </div>
         @endif
 
         @if($errors->any())
-            <div class="mb-4 p-3 rounded bg-red-100 text-red-800 text-xs">
-                <div class="font-semibold mb-1">Terjadi kesalahan:</div>
-                <ul class="list-disc pl-4">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+            <div id="error-notification" class="fixed top-4 right-4 z-50 p-4 rounded-lg bg-red-100 text-red-800 text-sm shadow-lg max-w-md max-h-96 overflow-y-auto">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <div class="font-semibold mb-1">Terjadi kesalahan:</div>
+                        <ul class="list-disc pl-4">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    <button onclick="document.getElementById('error-notification').remove()" class="ml-4 text-red-600 hover:text-red-800 font-bold">&times;</button>
+                </div>
             </div>
         @endif
 
@@ -60,7 +68,21 @@
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-1 text-xs">Divisi *</label>
-                    <input type="text" name="division" value="{{ old('division') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <select name="division" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                        <option value="">- Pilih Divisi -</option>
+                        <option value="HR & GA" @selected(old('division') == 'HR & GA')>HR & GA</option>
+                        <option value="IT" @selected(old('division') == 'IT')>IT</option>
+                        <option value="FINANCE & ACCOUNTING" @selected(old('division') == 'FINANCE & ACCOUNTING')>FINANCE & ACCOUNTING</option>
+                        <option value="DOC.CONTROL" @selected(old('division') == 'DOC.CONTROL')>DOC.CONTROL</option>
+                        <option value="FACILITY & SERVICES" @selected(old('division') == 'FACILITY & SERVICES')>FACILITY & SERVICES</option>
+                        <option value="DEVELOPMENT" @selected(old('division') == 'DEVELOPMENT')>DEVELOPMENT</option>
+                        <option value="OPERASIONAL" @selected(old('division') == 'OPERASIONAL')>OPERASIONAL</option>
+                        <option value="TRAINING" @selected(old('division') == 'TRAINING')>TRAINING</option>
+                        <option value="HSE" @selected(old('division') == 'HSE')>HSE</option>
+                        <option value="LEGAL" @selected(old('division') == 'LEGAL')>LEGAL</option>
+                        <option value="DIREKSI" @selected(old('division') == 'DIREKSI')>DIREKSI</option>
+                        <option value="PAJAK" @selected(old('division') == 'PAJAK')>PAJAK</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-1 text-xs">Foto Profil *</label>
@@ -165,24 +187,24 @@
             <h2 class="text-sm font-semibold text-gray-800">Postur & Seragam</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Tinggi Badan (cm)</label>
-                    <input type="number" name="height_cm" value="{{ old('height_cm') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Tinggi Badan (cm) *</label>
+                    <input type="number" name="height_cm" value="{{ old('height_cm') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Berat Badan (kg)</label>
-                    <input type="number" name="weight_kg" value="{{ old('weight_kg') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Berat Badan (kg) *</label>
+                    <input type="number" name="weight_kg" value="{{ old('weight_kg') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Baju</label>
-                    <input type="text" name="uniform_shirt_size" value="{{ old('uniform_shirt_size') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Baju *</label>
+                    <input type="text" name="uniform_shirt_size" value="{{ old('uniform_shirt_size') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Celana</label>
-                    <input type="text" name="uniform_pants_size" value="{{ old('uniform_pants_size') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Celana *</label>
+                    <input type="text" name="uniform_pants_size" value="{{ old('uniform_pants_size') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Sepatu</label>
-                    <input type="text" name="uniform_shoes_size" value="{{ old('uniform_shoes_size') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Ukuran Sepatu *</label>
+                    <input type="text" name="uniform_shoes_size" value="{{ old('uniform_shoes_size') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
             </div>
 
@@ -205,24 +227,24 @@
             <h2 class="text-sm font-semibold text-gray-800">Identitas</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">NPWP *</label>
-                    <input type="text" name="npwp" value="{{ old('npwp') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">NPWP</label>
+                    <input type="text" name="npwp" value="{{ old('npwp') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Nomor SIM C *</label>
-                    <input type="text" name="sim_c_number" value="{{ old('sim_c_number') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Nomor SIM C</label>
+                    <input type="text" name="sim_c_number" value="{{ old('sim_c_number') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">Nomor SIM A *</label>
-                    <input type="text" name="sim_a_number" value="{{ old('sim_a_number') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">Nomor SIM A</label>
+                    <input type="text" name="sim_a_number" value="{{ old('sim_a_number') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">No. BPJS TK *</label>
-                    <input type="text" name="bpjs_tk_number" value="{{ old('bpjs_tk_number') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">No. BPJS TK</label>
+                    <input type="text" name="bpjs_tk_number" value="{{ old('bpjs_tk_number') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
-                    <label class="block text-gray-700 mb-1 text-xs">No. BPJS KES *</label>
-                    <input type="text" name="bpjs_kes_number" value="{{ old('bpjs_kes_number') }}" required class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <label class="block text-gray-700 mb-1 text-xs">No. BPJS KES</label>
+                    <input type="text" name="bpjs_kes_number" value="{{ old('bpjs_kes_number') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-1 text-xs">No. KK *</label>
@@ -302,7 +324,13 @@
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-1 text-xs">Status Pernikahan</label>
-                    <input type="text" name="marital_status" value="{{ old('marital_status') }}" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                    <select name="marital_status" class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                        <option value="">- Pilih Status -</option>
+                        <option value="Kawin" @selected(old('marital_status') == 'Kawin')>Kawin</option>
+                        <option value="Lajang" @selected(old('marital_status') == 'Lajang')>Lajang</option>
+                        <option value="Cerai Hidup" @selected(old('marital_status') == 'Cerai Hidup')>Cerai Hidup</option>
+                        <option value="Cerai Mati" @selected(old('marital_status') == 'Cerai Mati')>Cerai Mati</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-gray-700 mb-1 text-xs">Jumlah Anak</label>
@@ -477,10 +505,53 @@
             </div>
 
             <div class="flex justify-end mt-4">
-                <button type="submit" class="px-4 py-2 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Kirim Data</button>
+                <button type="button" onclick="showConsentModal()" class="px-4 py-2 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">Kirim Data</button>
             </div>
         </form>
     </div>
 </div>
+
+<div id="consent-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Persetujuan Pengelolaan Data</h3>
+        <div class="mb-4">
+            <label class="flex items-start space-x-3 cursor-pointer">
+                <input type="checkbox" id="consent-checkbox" class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <span class="text-sm text-gray-700">Saya menyetujui bahwa data pribadi yang saya berikan akan dikelola oleh perusahaan untuk keperluan administrasi karyawan sesuai dengan kebijakan privasi yang berlaku.</span>
+            </label>
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button type="button" onclick="hideConsentModal()" class="px-4 py-2 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300">Batal</button>
+            <button type="button" id="confirm-submit" onclick="submitForm()" disabled class="px-4 py-2 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed">Konfirmasi & Kirim</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showConsentModal() {
+        const form = document.querySelector('form');
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        document.getElementById('consent-modal').classList.remove('hidden');
+        document.getElementById('consent-modal').classList.add('flex');
+    }
+
+    function hideConsentModal() {
+        document.getElementById('consent-modal').classList.add('hidden');
+        document.getElementById('consent-modal').classList.remove('flex');
+        document.getElementById('consent-checkbox').checked = false;
+        document.getElementById('confirm-submit').disabled = true;
+    }
+
+    function submitForm() {
+        document.querySelector('form').submit();
+    }
+
+    document.getElementById('consent-checkbox').addEventListener('change', function() {
+        document.getElementById('confirm-submit').disabled = !this.checked;
+    });
+</script>
 </body>
 </html>

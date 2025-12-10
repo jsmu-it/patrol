@@ -12,33 +12,28 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
-    libpng-dev
+    libpng-dev \
+    supervisor
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
+# Install PHP extensions including Redis and OPcache
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip opcache
+
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Create directories for logs
+RUN mkdir -p /var/log/php /var/lib/php/sessions && \
+    chown -R www-data:www-data /var/log/php /var/lib/php/sessions
+
 # Set working directory
 WORKDIR /var/www
-
-# We do NOT copy files here. We mount them via docker-compose volume for development/production flexibility.
-# But for production build, we might want to COPY.
-# For this setup (hybrid), we will rely on volume mount in docker-compose.
-
-# Set permissions for Laravel storage (if directory exists)
-# Note: Since we mount volumes, these commands run on the container's view of the files
-# It's better to handle this in a entrypoint script or manual setup.
-
-# Change current user to www
-# USER www-data 
-# (Commented out USER www-data to allow root operations if needed for permission fixing during setup, 
-# usually in prod we use non-root, but for this specific migration scenario, root helps fix vol permissions)
 
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000

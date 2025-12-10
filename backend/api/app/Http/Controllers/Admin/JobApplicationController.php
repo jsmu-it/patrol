@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CmsCareer;
 use App\Models\JobApplication;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,11 +29,27 @@ class JobApplicationController extends Controller
             $query->where('status', $status);
         }
 
-        $applications = $query->paginate(20);
+        // Filter by position (career_id)
+        if ($request->filled('career_id')) {
+            $query->where('career_id', $request->career_id);
+        }
+
+        // Filter by location
+        if ($request->filled('location')) {
+            $query->whereHas('career', function ($q) use ($request) {
+                $q->where('location', $request->location);
+            });
+        }
+
+        $applications = $query->paginate(20)->withQueryString();
 
         $pageTitle = $status === 'rejected' ? 'Karyawan Ditolak' : 'Data Pelamar';
 
-        return view('admin.hrd.applications.index', compact('applications', 'pageTitle', 'status'));
+        // Get careers and locations for filter dropdowns
+        $careers = CmsCareer::orderBy('title')->get();
+        $locations = CmsCareer::whereNotNull('location')->where('location', '!=', '')->distinct()->pluck('location');
+
+        return view('admin.hrd.applications.index', compact('applications', 'pageTitle', 'status', 'careers', 'locations'));
     }
 
     public function show(JobApplication $application): View

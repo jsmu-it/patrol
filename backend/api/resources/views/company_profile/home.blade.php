@@ -150,7 +150,7 @@
                 </div>
                 <div class="p-6">
                     <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $service->title }}</h3>
-                    <p class="text-gray-600 mb-4 line-clamp-3">{{ $service->short_description }}</p>
+                    <p class="text-gray-600 mb-4 line-clamp-3">{!! strip_tags($service->short_description) !!}</p>
                     <a href="{{ route('services') }}#{{ $service->slug }}" class="text-blue-600 hover:text-blue-800 font-medium">Read More &rarr;</a>
                 </div>
             </div>
@@ -171,7 +171,7 @@
             <div class="border border-gray-100 rounded-lg p-6 hover:border-blue-200 transition">
                 <p class="text-sm text-gray-400 mb-2">{{ $activity->date ? $activity->date->format('d M Y') : '' }}</p>
                 <h3 class="text-lg font-bold text-gray-900 mb-3"><a href="{{ route('activities.show', $activity) }}" class="hover:text-blue-600">{{ $activity->title }}</a></h3>
-                <p class="text-gray-600 text-sm line-clamp-3">{{ $activity->short_description }}</p>
+                <p class="text-gray-600 text-sm line-clamp-3">{!! strip_tags($activity->short_description) !!}</p>
             </div>
             @endforeach
         </div>
@@ -194,6 +194,106 @@
                     @endif
                 </div>
              @endforeach
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+@if($testimonials->count() > 0)
+<section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-900 uppercase">Apa Kata Klien Kami</h2>
+            <div class="w-20 h-1 bg-blue-600 mx-auto mt-4"></div>
+            <p class="mt-4 text-gray-600">Testimoni dari klien yang telah mempercayakan keamanan mereka kepada kami</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            @foreach($testimonials->take(3) as $testimonial)
+            <div class="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition duration-300 {{ $testimonial->is_featured ? 'ring-2 ring-blue-500' : '' }}">
+                <!-- Rating -->
+                <div class="flex items-center gap-1 text-yellow-400 mb-4">
+                    @for($i = 1; $i <= 5; $i++)
+                        @if($i <= $testimonial->rating)
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                        @else
+                            <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                        @endif
+                    @endfor
+                </div>
+
+                <!-- Content -->
+                <blockquote class="text-gray-700 italic mb-6 line-clamp-4">
+                    "{{ $testimonial->content }}"
+                </blockquote>
+
+                <!-- Author -->
+                <div class="flex items-center gap-4">
+                    @if($testimonial->client_photo)
+                        <img src="{{ asset('storage/' . $testimonial->client_photo) }}" alt="{{ $testimonial->client_name }}" class="w-12 h-12 rounded-full object-cover">
+                    @else
+                        <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                            <span class="text-blue-600 font-bold text-lg">{{ substr($testimonial->client_name, 0, 1) }}</span>
+                        </div>
+                    @endif
+                    <div>
+                        <p class="font-semibold text-gray-900">{{ $testimonial->client_name }}</p>
+                        @if($testimonial->client_position || $testimonial->client_company)
+                        <p class="text-sm text-gray-500">
+                            {{ $testimonial->client_position }}{{ $testimonial->client_position && $testimonial->client_company ? ', ' : '' }}{{ $testimonial->client_company }}
+                        </p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @if($testimonials->count() > 3)
+        <div class="text-center mt-8">
+            <a href="{{ route('testimonials') }}" class="inline-block px-6 py-3 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition">
+                Lihat Semua Testimoni
+            </a>
+        </div>
+        @endif
+    </div>
+</section>
+@endif
+
+<!-- FAQ Preview -->
+<section class="py-16 bg-gray-100">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-900 uppercase">Pertanyaan Umum</h2>
+            <div class="w-20 h-1 bg-blue-600 mx-auto mt-4"></div>
+        </div>
+        
+        <div class="space-y-4" x-data="{ openFaq: 1 }">
+            @php
+                $homeFaqs = \App\Models\Faq::active()->orderBy('order')->take(5)->get();
+            @endphp
+            @foreach($homeFaqs as $index => $faq)
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <button @click="openFaq = openFaq === {{ $faq->id }} ? null : {{ $faq->id }}"
+                        class="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-gray-50 transition">
+                    <span class="font-medium text-gray-900 pr-4">{{ $faq->question }}</span>
+                    <svg class="w-5 h-5 text-gray-500 flex-shrink-0 transition-transform duration-200"
+                         :class="openFaq === {{ $faq->id }} ? 'rotate-180' : ''"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div x-show="openFaq === {{ $faq->id }}" x-collapse>
+                    <div class="px-6 pb-4 text-gray-600 border-t border-gray-100 pt-4">
+                        {!! nl2br(e($faq->answer)) !!}
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        <div class="text-center mt-8">
+            <a href="{{ route('faq') }}" class="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">
+                Lihat Semua FAQ
+            </a>
         </div>
     </div>
 </section>

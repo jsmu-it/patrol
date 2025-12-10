@@ -48,12 +48,24 @@ class User extends Authenticatable
     ];
 
     public const ROLE_SUPERADMIN = 'SUPERADMIN';
-
     public const ROLE_ADMIN = 'ADMIN';
-
     public const ROLE_PROJECT_ADMIN = 'PROJECT_ADMIN';
-
     public const ROLE_GUARD = 'GUARD';
+    public const ROLE_HRD = 'HRD';
+    public const ROLE_PAYROLL = 'PAYROLL';
+    public const ROLE_CMS = 'CMS';
+
+    public static function adminRoles(): array
+    {
+        return [
+            self::ROLE_SUPERADMIN,
+            self::ROLE_ADMIN,
+            self::ROLE_PROJECT_ADMIN,
+            self::ROLE_HRD,
+            self::ROLE_PAYROLL,
+            self::ROLE_CMS,
+        ];
+    }
 
     public function isSuperAdmin(): bool
     {
@@ -67,13 +79,53 @@ class User extends Authenticatable
 
     public function isProjectAdmin(): bool
     {
-        // If role is strictly PROJECT_ADMIN, OR if role is ADMIN but assigned to a specific project
         return $this->role === self::ROLE_PROJECT_ADMIN || ($this->role === self::ROLE_ADMIN && $this->active_project_id !== null);
     }
 
     public function isGuard(): bool
     {
         return $this->role === self::ROLE_GUARD;
+    }
+
+    public function isHrd(): bool
+    {
+        return $this->role === self::ROLE_HRD;
+    }
+
+    public function isPayroll(): bool
+    {
+        return $this->role === self::ROLE_PAYROLL;
+    }
+
+    public function isCms(): bool
+    {
+        return $this->role === self::ROLE_CMS;
+    }
+
+    public function canAccessMenu(string $menu): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $menuAccess = [
+            'dashboard' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'users' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'projects' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'patrol' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'shifts' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'reports' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'approvals' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'broadcast' => [self::ROLE_ADMIN, self::ROLE_PROJECT_ADMIN],
+            'hrd' => [self::ROLE_HRD],
+            'payroll' => [self::ROLE_PAYROLL],
+            'pkwt' => [self::ROLE_HRD],
+            'careers' => [self::ROLE_HRD],
+            'cms' => [self::ROLE_CMS],
+            'settings' => [self::ROLE_CMS],
+        ];
+
+        return in_array($this->role, $menuAccess[$menu] ?? [], true);
     }
 
     public function activeProject()

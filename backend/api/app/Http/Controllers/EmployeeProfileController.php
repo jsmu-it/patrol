@@ -62,23 +62,23 @@ class EmployeeProfileController extends Controller
             'phone_number' => ['required', 'string'],
             'personal_email' => ['required', 'email', 'max:255'],
             
-            'height_cm' => ['nullable', 'integer'],
-            'weight_kg' => ['nullable', 'integer'],
-            'uniform_shirt_size' => ['nullable', 'string'],
-            'uniform_pants_size' => ['nullable', 'string'],
-            'uniform_shoes_size' => ['nullable', 'string'],
+            'height_cm' => ['required', 'integer'],
+            'weight_kg' => ['required', 'integer'],
+            'uniform_shirt_size' => ['required', 'string'],
+            'uniform_pants_size' => ['required', 'string'],
+            'uniform_shoes_size' => ['required', 'string'],
             
             // Telp Darurat (Wajib)
             'emergency_phone' => ['required', 'string'],
             'emergency_name' => ['required', 'string'],
             'emergency_relation' => ['required', 'string'],
             
-            // Identitas (Wajib)
-            'npwp' => ['required', 'string'],
-            'sim_c_number' => ['required', 'string'],
-            'sim_a_number' => ['required', 'string'],
-            'bpjs_tk_number' => ['required', 'string'],
-            'bpjs_kes_number' => ['required', 'string'],
+            // Identitas (hanya KK wajib)
+            'npwp' => ['nullable', 'string'],
+            'sim_c_number' => ['nullable', 'string'],
+            'sim_a_number' => ['nullable', 'string'],
+            'bpjs_tk_number' => ['nullable', 'string'],
+            'bpjs_kes_number' => ['nullable', 'string'],
             'kk_number' => ['required', 'string'],
             
             // Alamat KTP (Wajib)
@@ -145,7 +145,7 @@ class EmployeeProfileController extends Controller
         $user->active_project_id = $data['active_project_id'] ?? null;
 
         if (! $user->exists || ! $user->password) {
-            $user->password = bcrypt($username);
+            $user->password = bcrypt('guard2025');
         }
 
         $user->save();

@@ -70,21 +70,54 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="text-sm font-semibold text-gray-800">Patroli Hari Ini</h2>
             </div>
             <div class="text-3xl font-semibold text-gray-900">{{ $patrolToday }}</div>
-            <p class="mt-1 text-xs text-gray-500">Total log patroli yang tercatat hari ini.</p>
+            <p class="mt-1 text-xs text-gray-500">Total log patroli hari ini</p>
         </div>
         <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
-            <h2 class="text-sm font-semibold text-gray-800 mb-2">Ringkasan Cepat</h2>
-            <ul class="text-xs text-gray-600 space-y-1 list-disc pl-4">
-                <li>Kelola data karyawan dan project di menu samping.</li>
-                <li>Pantau absensi dan patroli melalui menu laporan.</li>
-                <li>Proses approval absensi dinas dan cuti di menu Approval.</li>
-            </ul>
+            <div class="text-sm font-semibold text-gray-800 mb-2">Patroli Bulan Ini</div>
+            <div class="text-3xl font-semibold text-gray-900">{{ $analytics['patrolStats']['thisMonth'] }}</div>
+            <p class="mt-1 text-xs {{ $analytics['patrolStats']['percentChange'] >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                {{ $analytics['patrolStats']['percentChange'] >= 0 ? '+' : '' }}{{ $analytics['patrolStats']['percentChange'] }}% dari bulan lalu
+            </p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <div class="text-sm font-semibold text-gray-800 mb-2">Checkpoint Coverage</div>
+            <div class="text-3xl font-semibold text-gray-900">{{ $analytics['patrolStats']['coveragePercent'] }}%</div>
+            <p class="mt-1 text-xs text-gray-500">{{ $analytics['patrolStats']['checkpointsVisited'] }}/{{ $analytics['patrolStats']['totalCheckpoints'] }} checkpoint</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <div class="text-sm font-semibold text-gray-800 mb-2">Tipe Patroli (Bulan Ini)</div>
+            <div class="flex items-center gap-4 mt-2">
+                <div class="text-center">
+                    <div class="text-lg font-semibold text-blue-600">{{ $analytics['patrolByType']['patrol'] }}</div>
+                    <div class="text-xs text-gray-500">Normal</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-semibold text-red-600">{{ $analytics['patrolByType']['sos'] }}</div>
+                    <div class="text-xs text-gray-500">SOS</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-semibold text-yellow-600">{{ $analytics['patrolByType']['incident'] }}</div>
+                    <div class="text-xs text-gray-500">Insiden</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-800 mb-4">Tren Absensi (30 Hari Terakhir)</h2>
+            <canvas id="attendanceChart" height="120"></canvas>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h2 class="text-sm font-semibold text-gray-800 mb-4">Absensi per Project (Bulan Ini)</h2>
+            <canvas id="projectChart" height="200"></canvas>
         </div>
     </div>
     <div class="mt-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4">
@@ -100,41 +133,124 @@
 
 @push('scripts')
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const patrolPoints = @json($patrolPoints ?? []);
+        const attendanceData = @json($analytics['attendanceByDay'] ?? ['labels' => [], 'clockIn' => [], 'clockOut' => []]);
+        const projectData = @json($analytics['attendanceByProject'] ?? ['labels' => [], 'data' => []]);
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Patrol Map
             const mapElement = document.getElementById('patrol-map');
-            if (! mapElement || patrolPoints.length === 0) {
-                if (mapElement) {
-                    mapElement.classList.add('flex', 'items-center', 'justify-center', 'text-xs', 'text-gray-400');
-                    mapElement.textContent = 'Belum ada titik patroli dengan koordinat.';
+            if (mapElement && patrolPoints.length > 0) {
+                const map = L.map('patrol-map');
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                const latLngs = [];
+
+                patrolPoints.forEach(point => {
+                    const latLng = [point.lat, point.lng];
+                    latLngs.push(latLng);
+                    L.marker(latLng).addTo(map).bindPopup(
+                        `<strong>${point.title}</strong><br/>${point.post_name || ''}<br/><span class="text-xs">${point.project || ''}</span>`
+                    );
+                });
+
+                if (latLngs.length === 1) {
+                    map.setView(latLngs[0], 16);
+                } else {
+                    const bounds = L.latLngBounds(latLngs);
+                    map.fitBounds(bounds.pad(0.2));
                 }
-                return;
+            } else if (mapElement) {
+                mapElement.classList.add('flex', 'items-center', 'justify-center', 'text-xs', 'text-gray-400');
+                mapElement.textContent = 'Belum ada titik patroli dengan koordinat.';
             }
 
-            const map = L.map('patrol-map');
+            // Attendance Chart
+            const attendanceCtx = document.getElementById('attendanceChart');
+            if (attendanceCtx) {
+                new Chart(attendanceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: attendanceData.labels,
+                        datasets: [
+                            {
+                                label: 'Clock In',
+                                data: attendanceData.clockIn,
+                                borderColor: 'rgb(34, 197, 94)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            },
+                            {
+                                label: 'Clock Out',
+                                data: attendanceData.clockOut,
+                                borderColor: 'rgb(239, 68, 68)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                tension: 0.3,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
-
-            const latLngs = [];
-
-            patrolPoints.forEach(point => {
-                const latLng = [point.lat, point.lng];
-                latLngs.push(latLng);
-                L.marker(latLng).addTo(map).bindPopup(
-                    `<strong>${point.title}</strong><br/>${point.post_name || ''}<br/><span class="text-xs">${point.project || ''}</span>`
-                );
-            });
-
-            if (latLngs.length === 1) {
-                map.setView(latLngs[0], 16);
-            } else {
-                const bounds = L.latLngBounds(latLngs);
-                map.fitBounds(bounds.pad(0.2));
+            // Project Chart
+            const projectCtx = document.getElementById('projectChart');
+            if (projectCtx && projectData.labels.length > 0) {
+                new Chart(projectCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: projectData.labels,
+                        datasets: [{
+                            data: projectData.data,
+                            backgroundColor: [
+                                'rgb(59, 130, 246)',
+                                'rgb(34, 197, 94)',
+                                'rgb(249, 115, 22)',
+                                'rgb(139, 92, 246)',
+                                'rgb(236, 72, 153)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: {
+                                        size: 11
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else if (projectCtx) {
+                projectCtx.parentElement.innerHTML += '<p class="text-center text-gray-400 text-xs mt-4">Belum ada data</p>';
             }
         });
     </script>

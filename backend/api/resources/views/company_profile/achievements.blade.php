@@ -15,12 +15,14 @@
                         <img src="{{ asset('storage/' . $achievement->image) }}" class="w-full h-full object-cover">
                     @endif
                 </div>
-                <div class="p-6">
+                <div class="p-6 relative z-10 bg-white">
                     @if($achievement->year)
                         <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mb-2">{{ $achievement->year }}</span>
                     @endif
                     <h3 class="text-xl font-bold text-gray-900 mb-2">{{ $achievement->title }}</h3>
-                    <p class="text-gray-600">{{ $achievement->description }}</p>
+                    <div class="text-gray-600 prose max-w-none">
+                        {!! $achievement->description !!}
+                    </div>
                 </div>
             </div>
             @endforeach

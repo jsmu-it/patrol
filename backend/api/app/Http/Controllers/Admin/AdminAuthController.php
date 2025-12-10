@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,7 +12,7 @@ class AdminAuthController extends Controller
 {
     public function showLoginForm()
     {
-        if (Auth::check() && (Auth::user()->isAdmin() || Auth::user()->isProjectAdmin())) {
+        if (Auth::check() && in_array(Auth::user()->role, User::adminRoles())) {
             return redirect()->route('admin.dashboard');
         }
 
@@ -35,7 +36,7 @@ class AdminAuthController extends Controller
 
         $user = Auth::user();
 
-        if (! ($user->isAdmin() || $user->isProjectAdmin())) {
+        if (! in_array($user->role, User::adminRoles())) {
             Auth::logout();
 
             return back()->withErrors([
@@ -43,7 +44,21 @@ class AdminAuthController extends Controller
             ])->onlyInput('username');
         }
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->intended($this->getDefaultRoute($user));
+    }
+
+    protected function getDefaultRoute($user): string
+    {
+        if ($user->isHrd()) {
+            return route('admin.hrd.applications');
+        }
+        if ($user->isPayroll()) {
+            return route('admin.payroll.index');
+        }
+        if ($user->isCms()) {
+            return route('admin.cms-hero-slides.index');
+        }
+        return route('admin.dashboard');
     }
 
     public function logout(Request $request): RedirectResponse

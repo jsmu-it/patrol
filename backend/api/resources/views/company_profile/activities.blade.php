@@ -28,7 +28,7 @@
                             <h2 class="text-2xl font-bold text-gray-900 mb-3">
                                 <a href="{{ route('activities.show', $activity) }}" class="hover:text-blue-800">{{ $activity->title }}</a>
                             </h2>
-                            <p class="text-gray-600 line-clamp-2">{{ $activity->short_description }}</p>
+                            <p class="text-gray-600 line-clamp-2">{!! strip_tags($activity->short_description) !!}</p>
                         </div>
                         <a href="{{ route('activities.show', $activity) }}" class="mt-4 text-blue-600 font-medium hover:underline">Read More</a>
                     </div>

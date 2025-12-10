@@ -17,7 +17,12 @@
     <div>
         <label class="block text-gray-600 mb-1">Role</label>
         <select name="role" class="w-full border border-gray-300 rounded px-2 py-1.5" required>
+            <option value="SUPERADMIN" @selected(old('role', $user->role ?? '') === 'SUPERADMIN')>SUPERADMIN</option>
             <option value="ADMIN" @selected(old('role', $user->role ?? '') === 'ADMIN')>ADMIN</option>
+            <option value="PROJECT_ADMIN" @selected(old('role', $user->role ?? '') === 'PROJECT_ADMIN')>PROJECT ADMIN</option>
+            <option value="HRD" @selected(old('role', $user->role ?? '') === 'HRD')>HRD</option>
+            <option value="PAYROLL" @selected(old('role', $user->role ?? '') === 'PAYROLL')>PAYROLL</option>
+            <option value="CMS" @selected(old('role', $user->role ?? '') === 'CMS')>CMS</option>
             <option value="GUARD" @selected(old('role', $user->role ?? '') === 'GUARD')>GUARD</option>
         </select>
     </div>

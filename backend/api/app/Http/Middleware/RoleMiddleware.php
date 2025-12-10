@@ -15,15 +15,17 @@ class RoleMiddleware
         $user = $request->user();
 
         if (! $user) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+            return redirect()->route('admin.login');
         }
 
         if (! in_array($user->role, $roles, true)) {
-            return response()->json([
-                'message' => 'Forbidden.',
-            ], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+            abort(403);
         }
 
         return $next($request);
