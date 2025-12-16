@@ -181,9 +181,9 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
 
-        // Applications
-        Route::resource('cms-applications', \App\Http\Controllers\Admin\CmsApplicationController::class)
-            ->parameters(['cms-applications' => 'cmsApplication'])
-            ->except(['show']);
+        // Applications (disabled - controller not implemented)
+        // Route::resource('cms-applications', \App\Http\Controllers\Admin\CmsApplicationController::class)
+        //     ->parameters(['cms-applications' => 'cmsApplication'])
+        //     ->except(['show']);
     });
 });
