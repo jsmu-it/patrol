@@ -1,28 +1,16 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CompanyProfileController;
+use App\Http\Controllers\EmployeeProfileController;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\ProjectController;
+use App\Http\Controllers\Admin\CheckpointController;
 use App\Http\Controllers\Admin\AttendanceReportController;
-use App\Http\Controllers\Admin\ApprovalController;
-use App\Http\Controllers\Admin\CheckpointController as AdminCheckpointController;
 use App\Http\Controllers\Admin\PatrolReportController;
-use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
-use App\Http\Controllers\EmployeeProfileController;
-use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
-*/
-
-use App\Http\Controllers\CompanyProfileController;
+use App\Http\Controllers\Admin\ApprovalController;
 
 Route::get('/', [CompanyProfileController::class, 'home'])->name('home');
 Route::get('/profile', [CompanyProfileController::class, 'profile'])->name('profile');
@@ -39,6 +27,8 @@ Route::post('/contact', [CompanyProfileController::class, 'sendContact'])->name(
 Route::get('/privacy-policy', [CompanyProfileController::class, 'privacy'])->name('privacy');
 Route::get('/faq', [CompanyProfileController::class, 'faq'])->name('faq');
 Route::get('/testimonials', [CompanyProfileController::class, 'testimonials'])->name('testimonials');
+Route::get('/application', [CompanyProfileController::class, 'application'])->name('application');
+Route::get('/application/{application}/download', [CompanyProfileController::class, 'downloadApplication'])->name('application.download');
 
 // Form testimoni publik (via link)
 Route::get('/testimonial/{token}', [\App\Http\Controllers\TestimonialFormController::class, 'showForm'])->name('testimonial.form');
@@ -50,6 +40,7 @@ Route::post('/pdp', [EmployeeProfileController::class, 'submitForm'])->name('pdp
 
 Route::get('/admin/login', [AdminAuthController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminAuthController::class, 'login'])->name('admin.login.post');
+
 Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
 
 // Admin routes - semua role admin bisa akses
@@ -66,19 +57,19 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
     Route::middleware(['role:SUPERADMIN,ADMIN,PROJECT_ADMIN'])->group(function (): void {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-        Route::resource('users', AdminUserController::class)->except(['show']);
-        Route::get('users-import', [AdminUserController::class, 'showImportForm'])->name('users.import.form');
-        Route::post('users-import', [AdminUserController::class, 'import'])->name('users.import.store');
-        Route::get('users-import-template', [AdminUserController::class, 'downloadImportTemplate'])->name('users.import.template');
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class)->except(['show']);
+        Route::get('users-import', [\App\Http\Controllers\Admin\UserController::class, 'showImportForm'])->name('users.import.form');
+        Route::post('users-import', [\App\Http\Controllers\Admin\UserController::class, 'import'])->name('users.import.store');
+        Route::get('users-import-template', [\App\Http\Controllers\Admin\UserController::class, 'downloadImportTemplate'])->name('users.import.template');
 
-        Route::resource('projects', AdminProjectController::class)->except(['show']);
-        Route::get('projects/{project}/shifts', [AdminProjectController::class, 'editShifts'])->name('projects.shifts.edit');
-        Route::post('projects/{project}/shifts', [AdminProjectController::class, 'updateShifts'])->name('projects.shifts.update');
+        Route::resource('projects', ProjectController::class)->except(['show']);
+        Route::get('projects/{project}/shifts', [ProjectController::class, 'editShifts'])->name('projects.shifts.edit');
+        Route::post('projects/{project}/shifts', [ProjectController::class, 'updateShifts'])->name('projects.shifts.update');
         
         Route::resource('shifts', \App\Http\Controllers\Admin\ShiftController::class)->except(['show']);
 
-        Route::get('projects/{project}/pkwt', [AdminProjectController::class, 'editPkwt'])->name('projects.pkwt.edit');
-        Route::put('projects/{project}/pkwt', [AdminProjectController::class, 'updatePkwt'])->name('projects.pkwt.update');
+        Route::get('projects/{project}/pkwt', [ProjectController::class, 'editPkwt'])->name('projects.pkwt.edit');
+        Route::put('projects/{project}/pkwt', [ProjectController::class, 'updatePkwt'])->name('projects.pkwt.update');
 
         Route::get('reports/attendance', [AttendanceReportController::class, 'index'])->name('reports.attendance');
         Route::get('reports/attendance/export-excel', [AttendanceReportController::class, 'exportExcel'])->name('reports.attendance.exportExcel');
@@ -96,12 +87,12 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::post('approvals/leave/{leaveRequest}/approve', [ApprovalController::class, 'approveLeave'])->name('approvals.leave.approve');
         Route::post('approvals/leave/{leaveRequest}/reject', [ApprovalController::class, 'rejectLeave'])->name('approvals.leave.reject');
 
-        Route::resource('patrol-checkpoints', AdminCheckpointController::class)
+        Route::resource('patrol-checkpoints', CheckpointController::class)
             ->names('patrol.checkpoints')
             ->parameters(['patrol-checkpoints' => 'checkpoint'])
             ->except(['show']);
-        Route::get('patrol-checkpoints/{checkpoint}/print', [AdminCheckpointController::class, 'print'])->name('patrol.checkpoints.print');
-        Route::get('patrol-checkpoints-print-all', [AdminCheckpointController::class, 'printAll'])->name('patrol.checkpoints.printAll');
+        Route::get('patrol-checkpoints/{checkpoint}/print', [CheckpointController::class, 'print'])->name('patrol.checkpoints.print');
+        Route::get('patrol-checkpoints-print-all', [CheckpointController::class, 'printAll'])->name('patrol.checkpoints.printAll');
 
         // Broadcast Notifications
         Route::get('broadcast', [\App\Http\Controllers\Admin\BroadcastController::class, 'index'])->name('broadcast.index');
@@ -118,7 +109,9 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::put('hrd/applications/{application}/status', [\App\Http\Controllers\Admin\JobApplicationController::class, 'updateStatus'])->name('hrd.applications.status');
         Route::delete('hrd/applications/{application}', [\App\Http\Controllers\Admin\JobApplicationController::class, 'destroy'])->name('hrd.applications.destroy');
 
+        // CV Routes
         Route::get('hrd/cv', [\App\Http\Controllers\Admin\CvController::class, 'index'])->name('hrd.cv.index');
+        
         Route::get('hrd/cv/{user}', [\App\Http\Controllers\Admin\CvController::class, 'show'])->name('hrd.cv.show');
         Route::get('hrd/cv/{user}/pdf', [\App\Http\Controllers\Admin\CvController::class, 'exportPdf'])->name('hrd.cv.pdf');
 
@@ -138,10 +131,12 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::get('payroll/import', [\App\Http\Controllers\Admin\PayrollController::class, 'showImportForm'])->name('payroll.import.form');
         Route::post('payroll/import', [\App\Http\Controllers\Admin\PayrollController::class, 'import'])->name('payroll.import.store');
         Route::get('payroll/template', [\App\Http\Controllers\Admin\PayrollController::class, 'downloadTemplate'])->name('payroll.template');
-        Route::post('payroll/print-bulk', [\App\Http\Controllers\Admin\PayrollController::class, 'printBulk'])->name('payroll.print-bulk');
+        Route::match(['get', 'post'], 'payroll/print-bulk', [\App\Http\Controllers\Admin\PayrollController::class, 'printBulk'])->name('payroll.print-bulk');
+        Route::post('payroll/send-bulk', [\App\Http\Controllers\Admin\PayrollController::class, 'sendBulk'])->name('payroll.send-bulk');
         Route::delete('payroll/period', [\App\Http\Controllers\Admin\PayrollController::class, 'destroyPeriod'])->name('payroll.destroy-period');
         Route::get('payroll/{slip}', [\App\Http\Controllers\Admin\PayrollController::class, 'show'])->name('payroll.show');
         Route::get('payroll/{slip}/print', [\App\Http\Controllers\Admin\PayrollController::class, 'print'])->name('payroll.print');
+        Route::post('payroll/{slip}/send', [\App\Http\Controllers\Admin\PayrollController::class, 'send'])->name('payroll.send');
         Route::delete('payroll/{slip}', [\App\Http\Controllers\Admin\PayrollController::class, 'destroy'])->name('payroll.destroy');
     });
 
@@ -185,5 +180,10 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         // Settings
         Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('settings.index');
         Route::post('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('settings.update');
+
+        // Applications
+        Route::resource('cms-applications', \App\Http\Controllers\Admin\CmsApplicationController::class)
+            ->parameters(['cms-applications' => 'cmsApplication'])
+            ->except(['show']);
     });
 });

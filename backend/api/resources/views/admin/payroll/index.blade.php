@@ -50,6 +50,26 @@
 
     <form id="bulk-form" method="POST" action="{{ route('admin.payroll.print-bulk') }}" target="_blank">
         @csrf
+        
+        {{-- Hidden inputs for all IDs (used by Select All Data) --}}
+        <div id="all-ids-container" style="display:none;">
+            @foreach($allIds as $id)
+                <input type="checkbox" name="ids[]" value="{{ $id }}" class="all-id-checkbox">
+            @endforeach
+        </div>
+        
+        @if(count($allIds) > 0)
+        <div class="px-4 py-2 bg-blue-50 border-b flex items-center gap-4">
+            <span class="text-sm text-blue-800">Total: <strong>{{ count($allIds) }}</strong> slip gaji</span>
+            <button type="button" id="select-all-data" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                Pilih Semua Data ({{ count($allIds) }})
+            </button>
+            <button type="button" id="deselect-all" class="text-sm text-gray-600 hover:text-gray-800 font-medium" style="display:none;">
+                Batalkan Pilihan
+            </button>
+        </div>
+        @endif
+        
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50">
@@ -90,6 +110,12 @@
                                 <a href="{{ route('admin.payroll.print', $slip) }}" target="_blank" class="text-green-600 hover:text-green-800" title="Print">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                                 </a>
+                                <form method="POST" action="{{ route('admin.payroll.send', $slip) }}" onsubmit="return confirm('Kirim slip gaji ke {{ $slip->name }}?')" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-purple-600 hover:text-purple-800" title="Kirim ke Aplikasi">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                                    </button>
+                                </form>
                                 <form method="POST" action="{{ route('admin.payroll.destroy', $slip) }}" onsubmit="return confirm('Hapus slip gaji ini?')" class="inline">
                                     @csrf
                                     @method('DELETE')
@@ -113,9 +139,14 @@
 
         @if($slips->count() > 0)
         <div class="px-4 py-3 border-t flex items-center justify-between">
-            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm disabled:opacity-50" id="btn-print-bulk" disabled>
-                Print Terpilih (<span id="selected-count">0</span>)
-            </button>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="printSelected()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm disabled:opacity-50" id="btn-print-bulk" disabled>
+                    Print Terpilih (<span id="selected-count">0</span>)
+                </button>
+                <button type="button" onclick="sendSelected()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50" id="btn-send-bulk" disabled>
+                    Kirim Terpilih (<span id="selected-count-send">0</span>)
+                </button>
+            </div>
             <div>
                 {{ $slips->links() }}
             </div>
@@ -129,24 +160,140 @@
 document.addEventListener('DOMContentLoaded', function() {
     const selectAll = document.getElementById('select-all');
     const checkboxes = document.querySelectorAll('.slip-checkbox');
+    const allIdCheckboxes = document.querySelectorAll('.all-id-checkbox');
     const btnPrint = document.getElementById('btn-print-bulk');
+    const btnSend = document.getElementById('btn-send-bulk');
     const countSpan = document.getElementById('selected-count');
+    const countSpanSend = document.getElementById('selected-count-send');
+    const selectAllDataBtn = document.getElementById('select-all-data');
+    const deselectAllBtn = document.getElementById('deselect-all');
+    
+    let allDataSelected = false;
 
     function updateCount() {
-        const checked = document.querySelectorAll('.slip-checkbox:checked').length;
+        let checked = 0;
+        if (allDataSelected) {
+            checked = allIdCheckboxes.length;
+        } else {
+            checked = document.querySelectorAll('.slip-checkbox:checked').length;
+        }
         countSpan.textContent = checked;
+        if (countSpanSend) countSpanSend.textContent = checked;
         btnPrint.disabled = checked === 0;
+        if (btnSend) btnSend.disabled = checked === 0;
     }
 
+    // Select all on current page
     selectAll?.addEventListener('change', function() {
+        allDataSelected = false;
+        allIdCheckboxes.forEach(cb => cb.checked = false);
         checkboxes.forEach(cb => cb.checked = this.checked);
+        if (selectAllDataBtn) selectAllDataBtn.style.display = 'inline';
+        if (deselectAllBtn) deselectAllBtn.style.display = 'none';
         updateCount();
     });
 
     checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateCount);
+        cb.addEventListener('change', function() {
+            allDataSelected = false;
+            allIdCheckboxes.forEach(cb => cb.checked = false);
+            if (selectAllDataBtn) selectAllDataBtn.style.display = 'inline';
+            if (deselectAllBtn) deselectAllBtn.style.display = 'none';
+            updateCount();
+        });
+    });
+
+    // Select ALL data (all pages)
+    selectAllDataBtn?.addEventListener('click', function() {
+        allDataSelected = true;
+        // Uncheck visible checkboxes, use hidden all-id checkboxes instead
+        checkboxes.forEach(cb => cb.checked = false);
+        allIdCheckboxes.forEach(cb => cb.checked = true);
+        selectAll.checked = true;
+        this.style.display = 'none';
+        deselectAllBtn.style.display = 'inline';
+        updateCount();
+    });
+
+    // Deselect all
+    deselectAllBtn?.addEventListener('click', function() {
+        allDataSelected = false;
+        checkboxes.forEach(cb => cb.checked = false);
+        allIdCheckboxes.forEach(cb => cb.checked = false);
+        selectAll.checked = false;
+        this.style.display = 'none';
+        selectAllDataBtn.style.display = 'inline';
+        updateCount();
     });
 });
+
+function getSelectedIds() {
+    let ids = [];
+    const allIdCheckboxes = document.querySelectorAll('.all-id-checkbox:checked');
+    const slipCheckboxes = document.querySelectorAll('.slip-checkbox:checked');
+    
+    if (allIdCheckboxes.length > 0) {
+        allIdCheckboxes.forEach(cb => ids.push(cb.value));
+    } else {
+        slipCheckboxes.forEach(cb => ids.push(cb.value));
+    }
+    return ids;
+}
+
+// Print selected slips using GET request
+function printSelected() {
+    const ids = getSelectedIds();
+    
+    if (ids.length === 0) {
+        alert('Pilih minimal satu slip gaji.');
+        return;
+    }
+    
+    // Build URL with query parameters
+    const params = ids.map(id => 'ids[]=' + id).join('&');
+    const url = '{{ route("admin.payroll.print-bulk") }}?' + params;
+    
+    // Open in new window
+    window.open(url, '_blank');
+}
+
+// Send selected slips
+function sendSelected() {
+    const ids = getSelectedIds();
+    
+    if (ids.length === 0) {
+        alert('Pilih minimal satu slip gaji.');
+        return;
+    }
+    
+    if (!confirm('Kirim ' + ids.length + ' slip gaji ke aplikasi karyawan?')) {
+        return;
+    }
+    
+    // Create form and submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("admin.payroll.send-bulk") }}';
+    
+    // Add CSRF token
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_token';
+    csrfInput.value = '{{ csrf_token() }}';
+    form.appendChild(csrfInput);
+    
+    // Add IDs
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ids[]';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+}
 </script>
 @endpush
 @endsection

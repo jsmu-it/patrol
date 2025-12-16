@@ -72,10 +72,19 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
-        // Parse custom format: d-m-Y H:i
-        $occurredAt = isset($data['occurred_at'])
-            ? CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC')
-            : CarbonImmutable::now('UTC');
+        // Parse custom format: d-m-Y H:i with fallback
+        $occurredAt = CarbonImmutable::now('UTC');
+        if (!empty($data['occurred_at'])) {
+            try {
+                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC');
+                if (!$occurredAt) {
+                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'UTC');
+                }
+            } catch (\Exception $e) {
+                \Log::warning('ClockIn: Failed to parse occurred_at: ' . $data['occurred_at'] . ' - ' . $e->getMessage());
+                $occurredAt = CarbonImmutable::now('UTC');
+            }
+        }
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,
@@ -114,10 +123,19 @@ class AttendanceController extends Controller
             ? $request->file('selfie')->store('attendance/selfies', 'public')
             : null;
 
-        // Parse custom format: d-m-Y H:i
-        $occurredAt = isset($data['occurred_at'])
-            ? CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC')
-            : CarbonImmutable::now('UTC');
+        // Parse custom format: d-m-Y H:i with fallback
+        $occurredAt = CarbonImmutable::now('UTC');
+        if (!empty($data['occurred_at'])) {
+            try {
+                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC');
+                if (!$occurredAt) {
+                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'UTC');
+                }
+            } catch (\Exception $e) {
+                \Log::warning('ClockOut: Failed to parse occurred_at: ' . $data['occurred_at'] . ' - ' . $e->getMessage());
+                $occurredAt = CarbonImmutable::now('UTC');
+            }
+        }
 
         $log = AttendanceLog::create([
             'user_id' => $user->id,

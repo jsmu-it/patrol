@@ -6,6 +6,9 @@ use App\Exports\PayrollTemplateExport;
 use App\Http\Controllers\Controller;
 use App\Imports\PayrollImport;
 use App\Models\PayrollSlip;
+use App\Models\User;
+use App\Models\UserProfile;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -34,6 +37,9 @@ class PayrollController extends Controller
             });
         }
 
+        // Get all IDs matching current filter (for select all feature)
+        $allIds = (clone $query)->pluck('id')->toArray();
+
         $slips = $query->orderBy('name')->paginate(20)->withQueryString();
 
         // Get unique periods for filter
@@ -42,7 +48,7 @@ class PayrollController extends Controller
         // Get unique units for filter
         $units = PayrollSlip::distinct()->whereNotNull('unit')->pluck('unit')->sort();
 
-        return view('admin.payroll.index', compact('slips', 'periods', 'units'));
+        return view('admin.payroll.index', compact('slips', 'periods', 'units', 'allIds'));
     }
 
     public function showImportForm()
@@ -128,5 +134,94 @@ class PayrollController extends Controller
 
         return redirect()->route('admin.payroll.index')
             ->with('status', 'Semua slip gaji periode ' . $request->period . ' berhasil dihapus.');
+    }
+
+    public function send(PayrollSlip $slip, PushNotificationService $pushService)
+    {
+        $profile = UserProfile::where('nip', $slip->nip)->first();
+
+        if (! $profile) {
+            return back()->with('error', 'Karyawan dengan NIP ' . $slip->nip . ' belum masuk database.');
+        }
+
+        $user = $profile->user;
+
+        if (! $user) {
+            return back()->with('error', 'User untuk NIP ' . $slip->nip . ' tidak ditemukan.');
+        }
+
+        // Link payroll slip to user if not already linked
+        if (! $slip->user_id) {
+            $slip->update(['user_id' => $user->id]);
+        }
+
+        // Send push notification
+        $pushService->notifyUser(
+            $user,
+            'Slip Gaji ' . $slip->period_month,
+            'Slip gaji Anda untuk periode ' . $slip->period_month . ' sudah tersedia.',
+            [
+                'type' => 'payroll',
+                'payroll_slip_id' => (string) $slip->id,
+                'period' => $slip->period_month,
+            ]
+        );
+
+        return back()->with('status', 'Slip gaji berhasil dikirim ke ' . $user->name . '.');
+    }
+
+    public function sendBulk(Request $request, PushNotificationService $pushService)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('error', 'Pilih minimal satu slip gaji.');
+        }
+
+        $slips = PayrollSlip::whereIn('id', $ids)->get();
+
+        $sent = 0;
+        $notFound = [];
+
+        foreach ($slips as $slip) {
+            $profile = UserProfile::where('nip', $slip->nip)->first();
+
+            if (! $profile || ! $profile->user) {
+                $notFound[] = $slip->nip . ' (' . $slip->name . ')';
+                continue;
+            }
+
+            $user = $profile->user;
+
+            // Link payroll slip to user if not already linked
+            if (! $slip->user_id) {
+                $slip->update(['user_id' => $user->id]);
+            }
+
+            // Send push notification
+            $pushService->notifyUser(
+                $user,
+                'Slip Gaji ' . $slip->period_month,
+                'Slip gaji Anda untuk periode ' . $slip->period_month . ' sudah tersedia.',
+                [
+                    'type' => 'payroll',
+                    'payroll_slip_id' => (string) $slip->id,
+                    'period' => $slip->period_month,
+                ]
+            );
+
+            $sent++;
+        }
+
+        $message = $sent . ' slip gaji berhasil dikirim.';
+
+        if (! empty($notFound)) {
+            $message .= ' ' . count($notFound) . ' karyawan belum masuk database: ' . implode(', ', array_slice($notFound, 0, 5));
+            if (count($notFound) > 5) {
+                $message .= ', dan ' . (count($notFound) - 5) . ' lainnya.';
+            }
+        }
+
+        return back()->with($sent > 0 ? 'status' : 'error', $message);
     }
 }
