@@ -126,19 +126,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       _pendingCount = event.pendingCount;
     });
 
-    // If items were synced, refresh attendance history and button state
-    if (event.syncedCount > 0) {
-      // Clear local state so we use fresh server data
-      _localClockedIn = null;
-      _localClockInTime = null;
-      _refreshAll();
+    // If items were synced, refresh attendance history 
+    // BUT keep local state until refresh completes to avoid UI flicker
+    if (event.syncedCount > 0 || (event.isComplete && event.pendingCount == 0)) {
+      _refreshAttendanceAndUpdateState();
     }
-    
-    // If all items synced (queue empty), ensure UI is fully refreshed
-    if (event.isComplete && event.pendingCount == 0) {
-      _localClockedIn = null;
-      _localClockInTime = null;
-      _refreshAll();
+  }
+
+  /// Refresh attendance history and only clear local state after data is loaded
+  Future<void> _refreshAttendanceAndUpdateState() async {
+    try {
+      final service = ref.read(attendanceServiceProvider);
+      final now = DateTime.now();
+      final from = now.subtract(const Duration(days: 30));
+      final records = await service.getHistory(from: from, to: now);
+      
+      if (!mounted) return;
+      
+      // Check if today's attendance exists in fresh server data
+      final today = DateTime.now();
+      final todayRecords = records.where((r) {
+        final t = r.occurredAt;
+        if (t == null) return false;
+        return t.year == today.year && t.month == today.month && t.day == today.day;
+      }).toList();
+      
+      // Sort to get the latest record for today
+      todayRecords.sort((a, b) {
+        final tA = a.occurredAt ?? DateTime(2000);
+        final tB = b.occurredAt ?? DateTime(2000);
+        return tB.compareTo(tA);
+      });
+      
+      setState(() {
+        // Update the future with fresh data
+        _recentAttendanceFuture = Future.value(records);
+        _shiftsFuture = ref.read(shiftServiceProvider).getAvailableShifts();
+        
+        // Now safe to clear local state since we have fresh server data
+        if (todayRecords.isNotEmpty) {
+          final lastRecord = todayRecords.first;
+          _localClockedIn = lastRecord.type == 'clock_in';
+          _localClockInTime = lastRecord.occurredAt;
+        } else {
+          _localClockedIn = null;
+          _localClockInTime = null;
+        }
+      });
+    } catch (e) {
+      debugPrint('Error refreshing attendance: $e');
+      // Keep local state on error to maintain UI consistency
     }
   }
 
@@ -907,6 +944,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 Navigator.of(context).pushNamed(AppRoutes.leaveList);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long),
+              title: const Text('Slip Gaji'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed(AppRoutes.payrollList);
+              },
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
@@ -1292,6 +1337,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           selfiePath: selfiePath,
         );
         
+        if (!mounted) return;
+        
         // Update local state immediately (for offline support)
         setState(() {
           _localClockedIn = true;
@@ -1305,6 +1352,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           note: note,
           selfiePath: selfiePath,
         );
+        
+        if (!mounted) return;
         
         // Update local state immediately (for offline support)
         setState(() {

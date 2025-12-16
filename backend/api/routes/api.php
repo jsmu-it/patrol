@@ -5,6 +5,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\CheckpointController;
 use App\Http\Controllers\LeaveRequestController;
 use App\Http\Controllers\PatrolController;
+use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ShiftController;
 use Illuminate\Support\Facades\Route;
@@ -48,4 +49,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/patrol/checkpoint', [PatrolController::class, 'checkCheckpoint']);
 
     Route::apiResource('leave-requests', LeaveRequestController::class)->only(['index', 'store', 'show']);
+
+    Route::get('/payroll', [PayrollController::class, 'index']);
+    Route::get('/payroll/{slip}', [PayrollController::class, 'show']);
 });

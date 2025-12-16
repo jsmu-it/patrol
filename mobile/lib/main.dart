@@ -15,8 +15,10 @@ import 'ui/screens/home/home_screen.dart';
 import 'ui/screens/leave/leave_form_screen.dart';
 import 'ui/screens/leave/leave_list_screen.dart';
 import 'ui/screens/patrol/patrol_form_screen.dart';
-import 'ui/screens/patrol/patrol_history_screen.dart'; // Added import
+import 'ui/screens/patrol/patrol_history_screen.dart';
 import 'ui/screens/patrol/patrol_scan_screen.dart';
+import 'ui/screens/payroll/payroll_list_screen.dart';
+import 'ui/screens/payroll/payroll_detail_screen.dart';
 import 'ui/screens/profile/profile_screen.dart';
 import 'ui/screens/splash/splash_screen.dart';
 
@@ -87,6 +89,12 @@ class MyApp extends ConsumerWidget {
         AppRoutes.profile: (_) => const ProfileScreen(),
         AppRoutes.leaveList: (_) => const LeaveListScreen(),
         AppRoutes.leaveForm: (_) => const LeaveFormScreen(),
+        AppRoutes.payrollList: (_) => const PayrollListScreen(),
+        AppRoutes.payrollDetail: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments;
+          final slipId = args is int ? args : 0;
+          return PayrollDetailScreen(slipId: slipId);
+        },
       },
     );
   }
