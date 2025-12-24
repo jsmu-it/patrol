@@ -18,7 +18,18 @@ plugins {
 android {
     namespace = "com.jsmu.jsmuguard"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
+    
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+    
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

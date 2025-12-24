@@ -60,8 +60,10 @@ class LocationService {
     // Try to get fresh position with short timeout (5 seconds max)
     try {
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium, // Faster than high
-        timeLimit: const Duration(seconds: 5),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium, // Faster than high
+          timeLimit: Duration(seconds: 5),
+        ),
       );
       
       _lastPosition = position;

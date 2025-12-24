@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -34,8 +36,19 @@ Future<void> main() async {
   Intl.defaultLocale = 'id_ID';
 
   if (!kIsWeb) {
-    await Firebase.initializeApp();
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    try {
+      await Firebase.initializeApp()
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        // ignore: avoid_print
+        print('[Main] Firebase init timeout, continuing without Firebase...');
+        throw TimeoutException('Firebase init timeout');
+      });
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      // ignore: avoid_print
+      print('[Main] Firebase init error: $e');
+      // Continue without Firebase - app should still work for basic features
+    }
   }
 
   runApp(const ProviderScope(child: MyApp()));
