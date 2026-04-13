@@ -30,14 +30,24 @@ class LeaveRequestController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
+        // Handle permit photo upload if provided
+        $permitPhotoPath = null;
+        if ($request->hasFile('permit_photo')) {
+            $permitPhotoPath = $request->file('permit_photo')->store('permit_photos', 'public');
+        }
+
         $leave = LeaveRequest::create([
             'user_id' => $user->id,
             'type' => $data['type'],
+            'leave_type_id' => $data['leave_type_id'] ?? null,
             'date_from' => $data['date_from'],
             'date_to' => $data['date_to'],
+            'time_from' => $data['time_from'] ?? null,
+            'time_to' => $data['time_to'] ?? null,
             'reason' => $data['reason'],
             'status' => LeaveRequest::STATUS_PENDING,
             'doctor_note' => $data['doctor_note'] ?? null,
+            'permit_photo' => $permitPhotoPath,
         ]);
 
         $typeLabel = match ($leave->type) {
@@ -47,14 +57,34 @@ class LeaveRequestController extends Controller
             default => $leave->type,
         };
 
-        $this->notifications->notifyAdmins(
-            'Pengajuan '.$typeLabel,
-            sprintf('%s mengajukan %s.', $user->name, $typeLabel),
-            [
-                'type' => 'leave_request',
-                'leave_request_id' => $leave->id,
-            ],
-        );
+        // Send notification to supervisor if exists, otherwise fallback to admins
+        $supervisor = $user->supervisor;
+
+        if ($supervisor && $supervisor->fcm_token) {
+            // Has supervisor with FCM token - send to supervisor only
+            $this->notifications->notifyUser(
+                $supervisor,
+                'Pengajuan '.$typeLabel.' dari Bawahan',
+                sprintf('%s mengajukan %s.', $user->name, $typeLabel),
+                [
+                    'type' => 'leave_request',
+                    'leave_request_id' => $leave->id,
+                ]
+            );
+        } else {
+            // Fallback: No supervisor or supervisor has no FCM token
+            // Send to admins with project filtering
+            $this->notifications->notifyAdmins(
+                'Pengajuan '.$typeLabel,
+                sprintf('%s mengajukan %s.', $user->name, $typeLabel),
+                [
+                    'type' => 'leave_request',
+                    'leave_request_id' => $leave->id,
+                ],
+                $user->active_project_id  // Filter admins by user's active project
+            );
+        }
+
 
         $this->notifications->notifyUser(
             $user,
@@ -63,7 +93,7 @@ class LeaveRequestController extends Controller
             [
                 'type' => 'leave_request',
                 'leave_request_id' => $leave->id,
-            ],
+            ]
         );
 
         return response()->json(new LeaveRequestResource($leave), 201);

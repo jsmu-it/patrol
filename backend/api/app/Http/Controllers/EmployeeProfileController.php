@@ -27,8 +27,12 @@ class EmployeeProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'active_project_id' => ['required', 'integer', 'exists:projects,id'],
-            'profile_photo' => ['required', 'image', 'max:2048'],
+            'active_project_id' => ['required', 'string'],
+            'profile_photo' => ['required', 'image', 'max:10240'],
+
+            // New project name fields (optional, depends on active_project_id)
+            'new_project_name' => ['nullable', 'string', 'max:255'],
+            'new_project_name_dropdown' => ['nullable', 'string', 'max:255'],
 
             // Data karyawan & profil
             'position' => ['required', 'string'],
@@ -135,6 +139,29 @@ class EmployeeProfileController extends Controller
             'youtube' => ['nullable', 'string'],
         ]);
 
+        // Handle new project creation
+        $projectId = $data['active_project_id'];
+        
+        if ($projectId === '__new__') {
+            // Determine which new project name field to use
+            $newProjectName = $data['new_project_name'] ?? $data['new_project_name_dropdown'] ?? null;
+            
+            if (empty($newProjectName)) {
+                return redirect()->back()
+                    ->withErrors(['new_project_name' => 'Nama lokasi tugas harus diisi.'])
+                    ->withInput();
+            }
+            
+            // Create new project
+            $project = Project::create([
+                'name' => $newProjectName,
+                'description' => 'Dibuat dari form PDP',
+                'is_active' => true,
+            ]);
+            
+            $projectId = $project->id;
+        }
+
         // Username disamakan dengan NIP
         $username = $data['nip'];
 
@@ -142,7 +169,7 @@ class EmployeeProfileController extends Controller
         $user->name = $data['name'];
         $user->email = $data['email'] ?? null;
         $user->role = User::ROLE_GUARD;
-        $user->active_project_id = $data['active_project_id'] ?? null;
+        $user->active_project_id = $projectId;
 
         if (! $user->exists || ! $user->password) {
             $user->password = bcrypt('guard2025');
@@ -151,7 +178,7 @@ class EmployeeProfileController extends Controller
         $user->save();
 
         $profileData = $data;
-        unset($profileData['name'], $profileData['email'], $profileData['active_project_id'], $profileData['profile_photo']);
+        unset($profileData['name'], $profileData['email'], $profileData['active_project_id'], $profileData['profile_photo'], $profileData['new_project_name'], $profileData['new_project_name_dropdown']);
 
         if ($request->hasFile('profile_photo')) {
             $profileData['profile_photo_path'] = $request->file('profile_photo')

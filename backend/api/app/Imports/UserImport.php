@@ -1,7 +1,10 @@
 <?php
 
+
 namespace App\Imports;
 
+use App\Models\LeaveBalance;
+use App\Models\LeaveType;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -12,6 +15,57 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class UserImport implements ToCollection, WithHeadingRow
 {
+    /**
+     * Parse Indonesian date format to Y-m-d format
+     */
+    private function parseDate($date)
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        // If already in correct format or is a date object, return as is
+        if ($date instanceof \DateTime || $date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        // Try to parse Indonesian month names
+        $indonesianMonths = [
+            'Januari' => '01', 'Februari' => '02', 'Maret' => '03',
+            'April' => '04', 'Mei' => '05', 'Juni' => '06',
+            'Juli' => '07', 'Agustus' => '08', 'September' => '09',
+            'Oktober' => '10', 'November' => '11', 'Desember' => '12'
+        ];
+
+        $dateStr = trim($date);
+        
+        // Pattern: DD Month YYYY (e.g., "01 Januari 2026")
+        foreach ($indonesianMonths as $indo => $num) {
+            if (stripos($dateStr, $indo) !== false) {
+                $dateStr = str_ireplace($indo, $num, $dateStr);
+                // Now format is like "01 01 2026", convert to "2026-01-01"
+                $parts = preg_split('/[\s\-\/]+/', $dateStr);
+                if (count($parts) >= 3) {
+                    return sprintf('%04d-%02d-%02d', $parts[2], $parts[1], $parts[0]);
+                }
+            }
+        }
+
+        // Try standard formats
+        try {
+            if (is_numeric($dateStr)) {
+                // Excel serial date
+                $unix = ($dateStr - 25569) * 86400;
+                return date('Y-m-d', $unix);
+            }
+            
+            // Try parsing with Carbon as fallback
+            return \Carbon\Carbon::parse($dateStr)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
@@ -41,12 +95,26 @@ class UserImport implements ToCollection, WithHeadingRow
             }
 
             $password = (string) ($row['password'] ?? '');
+            $email = $row['email'] ?? null;
+            $username = $row['username'];
+
+            // Check for duplicate email - if email exists with different username, skip this row
+            if ($email) {
+                $existingUserWithEmail = User::where('email', $email)
+                    ->where('username', '!=', $username)
+                    ->first();
+                
+                if ($existingUserWithEmail) {
+                    // Skip this row - email already used by another user
+                    continue;
+                }
+            }
 
             $user = User::updateOrCreate(
-                ['username' => $row['username']],
+                ['username' => $username],
                 [
-                    'name' => $row['name'] ?? $row['username'],
-                    'email' => $row['email'] ?? null,
+                    'name' => $row['name'] ?? $username,
+                    'email' => $email,
                     'role' => $role,
                     'active_project_id' => $project?->id,
                     'password' => Hash::make($password !== '' ? $password : 'password'),
@@ -57,12 +125,12 @@ class UserImport implements ToCollection, WithHeadingRow
                 'nip' => $row['nip'] ?? null,
                 'position' => $row['position'] ?? null,
                 'division' => $row['division'] ?? null,
-                'join_date' => $row['join_date'] ?? null,
+                'join_date' => $this->parseDate($row['join_date'] ?? null),
                 'contract_period' => $row['contract_period'] ?? null,
                 'employment_status' => $row['employment_status'] ?? null,
                 'ktp_number' => $row['ktp_number'] ?? null,
                 'satpam_qualification' => $row['satpam_qualification'] ?? null,
-                'satpam_training_date' => $row['satpam_training_date'] ?? null,
+                'satpam_training_date' => $this->parseDate($row['satpam_training_date'] ?? null),
                 'satpam_training_institution' => $row['satpam_training_institution'] ?? null,
                 'satpam_training_location' => $row['satpam_training_location'] ?? null,
                 'satpam_kta_number' => $row['satpam_kta_number'] ?? null,
@@ -73,7 +141,7 @@ class UserImport implements ToCollection, WithHeadingRow
                 'education_city' => $row['education_city'] ?? null,
                 'education_major' => $row['education_major'] ?? null,
                 'birth_city' => $row['birth_city'] ?? null,
-                'birth_date' => $row['birth_date'] ?? null,
+                'birth_date' => $this->parseDate($row['birth_date'] ?? null),
                 'age' => $row['age'] ?? null,
                 'gender' => $row['gender'] ?? null,
                 'mother_name' => $row['mother_name'] ?? null,
@@ -125,15 +193,15 @@ class UserImport implements ToCollection, WithHeadingRow
                 'exp3_position' => $row['exp3_position'] ?? null,
                 'exp3_company' => $row['exp3_company'] ?? null,
                 'exp3_city' => $row['exp3_city'] ?? null,
-                'cert1_date' => $row['cert1_date'] ?? null,
+                'cert1_date' => $this->parseDate($row['cert1_date'] ?? null),
                 'cert1_training' => $row['cert1_training'] ?? null,
                 'cert1_organizer' => $row['cert1_organizer'] ?? null,
                 'cert1_city' => $row['cert1_city'] ?? null,
-                'cert2_date' => $row['cert2_date'] ?? null,
+                'cert2_date' => $this->parseDate($row['cert2_date'] ?? null),
                 'cert2_training' => $row['cert2_training'] ?? null,
                 'cert2_organizer' => $row['cert2_organizer'] ?? null,
                 'cert2_city' => $row['cert2_city'] ?? null,
-                'cert3_date' => $row['cert3_date'] ?? null,
+                'cert3_date' => $this->parseDate($row['cert3_date'] ?? null),
                 'cert3_training' => $row['cert3_training'] ?? null,
                 'cert3_organizer' => $row['cert3_organizer'] ?? null,
                 'cert3_city' => $row['cert3_city'] ?? null,
@@ -155,6 +223,24 @@ class UserImport implements ToCollection, WithHeadingRow
                     ['user_id' => $user->id],
                     $profileData
                 );
+            }
+
+            // Initialize leave balances for new users (only if they don't have any yet)
+            $currentYear = now()->year;
+            $existingBalances = $user->leaveBalances()->where('year', $currentYear)->count();
+            
+            if ($existingBalances === 0) {
+                $activeLeaveTypes = LeaveType::active()->get();
+                
+                foreach ($activeLeaveTypes as $leaveType) {
+                    LeaveBalance::create([
+                        'user_id' => $user->id,
+                        'leave_type_id' => $leaveType->id,
+                        'quota' => $leaveType->default_quota ?? 0,
+                        'used' => 0,
+                        'year' => $currentYear,
+                    ]);
+                }
             }
         }
     }

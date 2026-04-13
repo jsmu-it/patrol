@@ -17,19 +17,29 @@ class LeaveFormNotifier extends StateNotifier<LeaveFormState> {
 
   Future<String?> submit({
     required String type,
+    int? leaveTypeId,
     required DateTime dateFrom,
     required DateTime dateTo,
+    String? timeFrom,
+    String? timeTo,
     required String reason,
     String? doctorNote,
+    String? sickLetterPath,
+    String? permitPhotoPath,
   }) async {
     state = state.copyWith(isSubmitting: true, errorMessage: null);
     try {
       final leave = await _service.create(
         type: type,
+        leaveTypeId: leaveTypeId,
         dateFrom: dateFrom,
         dateTo: dateTo,
+        timeFrom: timeFrom,
+        timeTo: timeTo,
         reason: reason,
         doctorNote: doctorNote,
+        sickLetterPath: sickLetterPath,
+        permitPhotoPath: permitPhotoPath,
       );
       state = LeaveFormState.initial();
       return 'Pengajuan ${leave.type} berhasil disimpan.';

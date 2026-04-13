@@ -25,7 +25,7 @@ class CmsHeroSlideController extends Controller
         $data = $request->validate([
             'title' => 'nullable|string|max:255',
             'subtitle' => 'nullable|string',
-            'image' => 'required|image|max:2048',
+            'image' => 'required|image|max:10240',
             'order' => 'integer',
         ]);
 
@@ -48,7 +48,7 @@ class CmsHeroSlideController extends Controller
         $data = $request->validate([
             'title' => 'nullable|string|max:255',
             'subtitle' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'order' => 'integer',
         ]);
 

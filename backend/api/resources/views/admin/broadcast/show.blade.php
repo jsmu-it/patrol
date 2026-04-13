@@ -32,6 +32,18 @@
                 <p class="bg-gray-50 rounded p-3 mt-1">{{ $broadcast->message }}</p>
             </div>
 
+            @if($broadcast->image_url)
+            <div>
+                <label class="text-sm text-gray-500">Gambar</label>
+                <div class="mt-2">
+                    <a href="{{ $broadcast->image_url }}" target="_blank">
+                        <img src="{{ $broadcast->image_url }}" alt="Gambar Pemberitahuan" class="max-w-sm rounded border shadow-sm hover:opacity-90 transition">
+                    </a>
+                    <p class="text-xs text-gray-400 mt-1">Klik gambar untuk melihat ukuran penuh</p>
+                </div>
+            </div>
+            @endif
+
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="text-sm text-gray-500">Target</label>

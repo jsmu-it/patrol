@@ -29,87 +29,84 @@
     </form>
 </div>
 
-@if(isset($records) && $records->count() > 0)
+@if(isset($employees) && $employees->count() > 0)
 <div class="bg-white rounded shadow-sm mb-6">
     <div class="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 class="text-lg font-semibold text-gray-800">Hasil Laporan</h3>
-        <div class="flex gap-2">
-            <a href="{{ route('admin.reports.attendance.exportExcel', request()->all()) }}" class="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
+        <div class="flex gap-2 items-center">
+            <!-- Template Selector -->
+            <select id="templateSelect" class="border-gray-300 rounded text-sm px-2 py-1.5">
+                <option value="standard">Template Standard</option>
+                <option value="pivot">Template Pivot (Matrix)</option>
+                <option value="ho">Format HO</option>
+                <option value="summarecon_bogor">Summarecon Bogor</option>
+            </select>
+            
+            <!-- Excel Export with template parameter -->
+            <a href="#" id="excelExport" class="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700 flex items-center gap-1">
                 <span>Excel</span>
             </a>
+            
             <a href="{{ route('admin.reports.attendance.exportPdf', request()->all()) }}" class="px-3 py-1.5 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1">
                 <span>PDF</span>
             </a>
         </div>
     </div>
+    
+    <script>
+    const templateSelect = document.getElementById('templateSelect');
+    
+    function updateExcelLinks() {
+        const template = templateSelect.value;
+        
+        // Update main excel export link
+        const excelExport = document.getElementById('excelExport');
+        const mainUrl = new URL(excelExport.href, window.location.origin);
+        mainUrl.searchParams.set('template', template);
+        excelExport.href = mainUrl.toString();
+        
+        // Update all individual download links
+        const individualLinks = document.querySelectorAll('.download-user-btn');
+        individualLinks.forEach(link => {
+            const url = new URL(link.href, window.location.origin);
+            url.searchParams.set('template', template);
+            link.href = url.toString();
+        });
+    }
+
+    templateSelect.addEventListener('change', updateExcelLinks);
+    
+    // Initialize links on load
+    document.addEventListener('DOMContentLoaded', updateExcelLinks);
+
+    document.getElementById('excelExport').addEventListener('click', function(e) {
+        updateExcelLinks();
+    });
+    </script>
     <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
             <thead class="bg-gray-50 text-gray-600 font-medium border-b">
                 <tr>
-                    <th class="px-6 py-3">Tanggal</th>
+                    <th class="px-6 py-3">No</th>
                     <th class="px-6 py-3">Nama</th>
                     <th class="px-6 py-3">Project</th>
-                    <th class="px-6 py-3">Shift</th>
-                    <th class="px-6 py-3">Masuk</th>
-                    <th class="px-6 py-3">Keluar</th>
-                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3">Action</th>
                 </tr>
             </thead>
             <tbody class="divide-y">
-                @foreach($records as $record)
+                @foreach($employees as $employee)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-3 whitespace-nowrap">{{ \Carbon\Carbon::parse($record['date'])->format('d M Y') }}</td>
-                    <td class="px-6 py-3 font-medium text-gray-900">{{ $record['user_name'] }}</td>
-                    <td class="px-6 py-3">{{ $record['project_name'] }}</td>
-                    <td class="px-6 py-3 text-xs">{{ $record['shift_name'] }}</td>
+                    <td class="px-6 py-3">{{ $loop->iteration }}</td>
+                    <td class="px-6 py-3 font-medium text-gray-900">{{ $employee->name }}</td>
+                    <td class="px-6 py-3">{{ $employee->activeProject?->name ?? '-' }}</td>
                     <td class="px-6 py-3">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-mono">{{ $record['clock_in_time'] }}</span>
-                                @if($record['clock_in_photo'])
-                                    <a href="{{ $record['clock_in_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
-                                @endif
-                            </div>
-                            @if(!empty($record['clock_in_location']) && $record['clock_in_location'] !== '-')
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ $record['clock_in_location'] }}" target="_blank" class="text-[10px] text-gray-500 hover:text-blue-600 flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    {{ $record['clock_in_location'] }}
-                                </a>
-                            @endif
-                        </div>
-                    </td>
-                    <td class="px-6 py-3">
-                        <div class="flex flex-col gap-1">
-                            <div class="flex items-center gap-2">
-                                <span class="font-mono {{ $record['clock_out_time'] === '-' ? 'text-red-500 font-bold' : '' }}">{{ $record['clock_out_time'] }}</span>
-                                @if($record['clock_out_photo'])
-                                    <a href="{{ $record['clock_out_photo'] }}" target="_blank" class="text-blue-500 hover:underline text-xs">[Foto]</a>
-                                @endif
-                            </div>
-                            @if(!empty($record['clock_out_location']) && $record['clock_out_location'] !== '-')
-                                <a href="https://www.google.com/maps/search/?api=1&query={{ $record['clock_out_location'] }}" target="_blank" class="text-[10px] text-gray-500 hover:text-blue-600 flex items-center gap-1">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    {{ $record['clock_out_location'] }}
-                                </a>
-                            @endif
-                        </div>
-                    </td>
-                    <td class="px-6 py-3">
-                        @if($record['status'] === 'Sesuai Jam Kerja')
-                            <span class="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">Sesuai</span>
-                        @elseif($record['status'] === 'Lebih Jam Kerja')
-                            <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">Lebih Jam Kerja</span>
-                        @elseif($record['status'] === 'Kurang Jam Kerja')
-                            <span class="px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-800">Kurang Jam Kerja</span>
-                        @else
-                            <span class="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">{{ $record['status'] }}</span>
-                        @endif
+                        <a href="{{ route('admin.reports.attendance.downloadUser', ['user_id' => $employee->id, 'from' => request('from'), 'to' => request('to'), 'project_id' => request('project_id')]) }}" 
+                           class="inline-flex items-center px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 download-user-btn">
+                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download
+                        </a>
                     </td>
                 </tr>
                 @endforeach
@@ -119,7 +116,8 @@
 </div>
 @elseif(request()->filled('from'))
 <div class="bg-white rounded shadow-sm p-8 text-center text-gray-500">
-    Tidak ada data absensi ditemukan untuk periode ini.
+    Tidak ada karyawan ditemukan untuk project ini.
 </div>
 @endif
 @endsection
+

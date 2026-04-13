@@ -21,12 +21,29 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _init() async {
-    // Request permissions upfront
-    await ref.read(permissionServiceProvider).requestInitialPermissions();
+    try {
+      // Run these in parallel to reduce blocking time
+      await Future.wait([
+        // Request permissions (optimized to only ask if needed)
+        ref
+            .read(permissionServiceProvider)
+            .requestInitialPermissions()
+            .timeout(const Duration(seconds: 10), onTimeout: () {
+          // ignore: avoid_print
+          print('[Splash] Permission request timeout, continuing...');
+        }),
 
-    // Load auth state
-    await ref.read(authNotifierProvider.notifier).loadFromStorage();
-    
+        // Load auth state
+        ref.read(authNotifierProvider.notifier).loadFromStorage(),
+      ]);
+
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('[Splash] Init error: $e');
+      // ignore: avoid_print
+      print(stack);
+    }
+
     if (!mounted) return;
 
     final authState = ref.read(authNotifierProvider);

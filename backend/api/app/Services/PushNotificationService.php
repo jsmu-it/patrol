@@ -100,13 +100,25 @@ class PushNotificationService
         }
     }
 
-    public function notifyAdmins(string $title, string $body, array $data = []): void
+    public function notifyAdmins(string $title, string $body, array $data = [], ?int $projectId = null): void
     {
-        $tokens = User::query()
-            ->whereIn('role', [User::ROLE_ADMIN, User::ROLE_SUPERADMIN, User::ROLE_PROJECT_ADMIN])
-            ->whereNotNull('fcm_token')
-            ->pluck('fcm_token')
-            ->all();
+        $query = User::query()
+            ->whereIn('role', [User::ROLE_ADMIN, User::ROLE_SUPERADMIN, User::ROLE_PROJECT_ADMIN, User::ROLE_HRD])
+            ->whereNotNull('fcm_token');
+
+        // If projectId is specified, filter to only admins with access to that project
+        if ($projectId !== null) {
+            $query->where(function ($q) use ($projectId) {
+                // Superadmins and HRD always have access to all projects
+                $q->whereIn('role', [User::ROLE_SUPERADMIN, User::ROLE_HRD])
+                    // OR admins who have been assigned to this specific project
+                    ->orWhereHas('accessibleProjects', function ($projectQuery) use ($projectId) {
+                        $projectQuery->where('projects.id', $projectId);
+                    });
+            });
+        }
+
+        $tokens = $query->pluck('fcm_token')->all();
 
         $this->sendToTokens($tokens, $title, $body, $data);
     }

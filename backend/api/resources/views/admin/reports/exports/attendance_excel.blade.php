@@ -6,14 +6,19 @@
     <table>
         <thead>
             <tr>
-                <th colspan="10" style="font-weight: bold; text-align: center; font-size: 14pt;">LAPORAN ABSENSI</th>
+                <th colspan="11" style="font-weight: bold; text-align: center; font-size: 14pt;">LAPORAN ABSENSI</th>
             </tr>
             <tr>
-                <td colspan="10" style="text-align: center;">Periode: {{ $filters['from']->format('d M Y') }} - {{ $filters['to']->format('d M Y') }}</td>
+                <td colspan="11" style="text-align: center;">Periode: {{ $filters['from']->format('d M Y') }} - {{ $filters['to']->format('d M Y') }}</td>
             </tr>
             <tr>
-                <td colspan="10" style="text-align: center;">Project: {{ $projectName }}</td>
+                <td colspan="11" style="text-align: center;">Project: {{ $projectName }}</td>
             </tr>
+            @if($userName)
+            <tr>
+                <td colspan="11" style="text-align: center; font-weight: bold;">Karyawan: {{ $userName }}</td>
+            </tr>
+            @endif
             <tr>
                 <th style="font-weight: bold;">Tanggal</th>
                 <th style="font-weight: bold;">Nama</th>
@@ -23,6 +28,7 @@
                 <th style="font-weight: bold;">Masuk</th>
                 <th style="font-weight: bold;">Keluar</th>
                 <th style="font-weight: bold;">Status</th>
+                <th style="font-weight: bold;">Jam Lebih</th>
                 <th style="font-weight: bold;">Keterangan Masuk</th>
                 <th style="font-weight: bold;">Keterangan Keluar</th>
             </tr>
@@ -38,6 +44,7 @@
                 <td>{{ $row['clock_in_time'] }}</td>
                 <td>{{ $row['clock_out_time'] }}</td>
                 <td>{{ $row['status'] }}</td>
+                <td>{{ $row['jam_lebih'] }}</td>
                 <td>{{ $row['clock_in_note'] }}</td>
                 <td>{{ $row['clock_out_note'] }}</td>
             </tr>

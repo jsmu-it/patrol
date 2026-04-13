@@ -25,7 +25,7 @@ class CmsClientController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'website' => 'nullable|url',
-            'logo' => 'required|image|max:2048',
+            'logo' => 'required|image|max:10240',
             'order' => 'integer',
         ]);
 
@@ -48,7 +48,7 @@ class CmsClientController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'website' => 'nullable|url',
-            'logo' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|max:10240',
             'order' => 'integer',
         ]);
 

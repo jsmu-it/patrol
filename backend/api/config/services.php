@@ -38,4 +38,10 @@ return [
         'project_id' => env('FIREBASE_PROJECT_ID'),
     ],
 
+    'livekit' => [
+        'api_key' => env('LIVEKIT_API_KEY'),
+        'api_secret' => env('LIVEKIT_API_SECRET'),
+        'url' => env('LIVEKIT_URL', 'ws://127.0.0.1:7880'),
+    ],
+
 ];

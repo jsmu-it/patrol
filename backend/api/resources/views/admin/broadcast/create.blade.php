@@ -1,17 +1,17 @@
 @extends('layouts.admin')
 
-@section('title', 'Kirim Notifikasi')
-@section('page_title', 'Kirim Broadcast Notifikasi')
+@section('title', 'Kirim Pemberitahuan')
+@section('page_title', 'Kirim Pemberitahuan')
 
 @section('content')
 <div class="max-w-2xl">
     <div class="bg-white rounded shadow">
         <div class="px-6 py-4 border-b">
-            <h2 class="text-lg font-semibold">Form Broadcast Notifikasi</h2>
-            <p class="text-sm text-gray-500 mt-1">Kirim notifikasi push ke karyawan melalui aplikasi mobile.</p>
+            <h2 class="text-lg font-semibold">Form Pemberitahuan</h2>
+            <p class="text-sm text-gray-500 mt-1">Kirim pemberitahuan push ke karyawan melalui aplikasi mobile.</p>
         </div>
 
-        <form method="POST" action="{{ route('admin.broadcast.store') }}" class="p-6 space-y-4" x-data="{ target: 'all' }">
+        <form method="POST" action="{{ route('admin.broadcast.store') }}" class="p-6 space-y-4" enctype="multipart/form-data" x-data="{ target: 'all', imagePreview: null }">
             @csrf
 
             <div>
@@ -21,8 +21,34 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Pesan <span class="text-red-500">*</span></label>
-                <textarea name="message" rows="4" required maxlength="1000" class="w-full border rounded px-3 py-2" placeholder="Isi pesan notifikasi...">{{ old('message') }}</textarea>
+                <textarea name="message" rows="4" required maxlength="1000" class="w-full border rounded px-3 py-2" placeholder="Isi pesan pemberitahuan...">{{ old('message') }}</textarea>
                 <p class="text-xs text-gray-500 mt-1">Maksimal 1000 karakter</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Gambar (Opsional)</label>
+                <div class="mt-1 flex items-center gap-4">
+                    <div class="flex-1">
+                        <input type="file" name="image" accept="image/*" class="w-full border rounded px-3 py-2 text-sm"
+                            @change="e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (e) => imagePreview = e.target.result;
+                                    reader.readAsDataURL(file);
+                                } else {
+                                    imagePreview = null;
+                                }
+                            }">
+                        <p class="text-xs text-gray-500 mt-1">Format: JPG, PNG, GIF, WebP. Maks: 2MB</p>
+                    </div>
+                    <template x-if="imagePreview">
+                        <div class="relative">
+                            <img :src="imagePreview" class="h-20 w-20 object-cover rounded border">
+                            <button type="button" @click="imagePreview = null; $refs.imageInput && ($refs.imageInput.value = '')" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600">×</button>
+                        </div>
+                    </template>
+                </div>
             </div>
 
             <div>
@@ -65,13 +91,13 @@
 
             <div class="bg-yellow-50 border border-yellow-200 rounded p-4">
                 <p class="text-sm text-yellow-800">
-                    <strong>Perhatian:</strong> Notifikasi akan langsung dikirim ke semua penerima yang sesuai kriteria dan memiliki FCM token terdaftar di aplikasi mobile.
+                    <strong>Perhatian:</strong> Pemberitahuan akan langsung dikirim ke semua penerima yang sesuai kriteria dan memiliki FCM token terdaftar di aplikasi mobile.
                 </p>
             </div>
 
             <div class="flex items-center gap-4 pt-4">
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="return confirm('Kirim notifikasi sekarang?')">
-                    Kirim Notifikasi
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onclick="return confirm('Kirim pemberitahuan sekarang?')">
+                    Kirim Pemberitahuan
                 </button>
                 <a href="{{ route('admin.broadcast.index') }}" class="px-6 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Batal</a>
             </div>

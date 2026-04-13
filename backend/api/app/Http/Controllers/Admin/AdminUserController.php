@@ -34,8 +34,7 @@ class AdminUserController extends Controller
             'role' => ['required', Rule::in(User::adminRoles())],
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
-
+    
         User::create($validated);
 
         return redirect()->route('admin.admin-users.index')
@@ -58,7 +57,7 @@ class AdminUserController extends Controller
         ]);
 
         if (!empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
+            // password left in validated array, model cast handles hashing
         } else {
             unset($validated['password']);
         }

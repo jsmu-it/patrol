@@ -41,7 +41,18 @@ class JobApplication extends Model
         'cert1_date', 'cert1_training', 'cert1_organizer', 'cert1_city',
         'cert2_date', 'cert2_training', 'cert2_organizer', 'cert2_city',
         'cert3_date', 'cert3_training', 'cert3_organizer', 'cert3_city',
-        'instagram', 'facebook', 'twitter', 'tiktok', 'linkedin', 'youtube'
+        'instagram', 'facebook', 'twitter', 'tiktok', 'linkedin', 'youtube',
+        'data_consent', 'data_consent_at', 'signature'
+    ];
+
+    protected $casts = [
+        'data_consent' => 'boolean',
+        'data_consent_at' => 'datetime',
+        'birth_date' => 'date',
+        'satpam_training_date' => 'date',
+        'cert1_date' => 'date',
+        'cert2_date' => 'date',
+        'cert3_date' => 'date',
     ];
 
     public function career()

@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\BroadcastNotification;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\PushNotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class BroadcastController extends Controller
 {
+    public function __construct(
+        private PushNotificationService $pushService
+    ) {}
+
     public function index()
     {
         $notifications = BroadcastNotification::with(['sender', 'targetProject'])
@@ -33,10 +38,17 @@ class BroadcastController extends Controller
         $data = $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string|max:1000',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'target' => 'required|in:all,project,role',
             'target_project_id' => 'required_if:target,project|nullable|exists:projects,id',
             'target_role' => 'required_if:target,role|nullable|in:GUARD,ADMIN,PROJECT_ADMIN',
         ]);
+
+        // Handle image upload
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('broadcast-images', 'public');
+        }
 
         // Get target users
         $usersQuery = User::whereNotNull('fcm_token')->where('fcm_token', '!=', '');
@@ -48,29 +60,55 @@ class BroadcastController extends Controller
         }
 
         $users = $usersQuery->get();
+        $tokens = $users->pluck('fcm_token')->filter()->unique()->values()->all();
 
         // Create broadcast record
         $broadcast = BroadcastNotification::create([
             'sent_by' => auth()->id(),
             'title' => $data['title'],
             'message' => $data['message'],
+            'image' => $imagePath,
             'target' => $data['target'],
             'target_project_id' => $data['target_project_id'] ?? null,
             'target_role' => $data['target_role'] ?? null,
-            'recipients_count' => $users->count(),
+            'recipients_count' => count($tokens),
             'success_count' => 0,
             'failed_count' => 0,
             'sent_at' => now(),
         ]);
 
-        // Send FCM notifications
+        // Get full image URL for FCM
+        $imageUrl = $broadcast->image_url;
+
+        // Prepare FCM data payload
+        $fcmData = [
+            'type' => 'broadcast',
+            'broadcast_id' => (string) $broadcast->id,
+            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+        ];
+
+        if ($imageUrl) {
+            $fcmData['image'] = $imageUrl;
+        }
+
+        // Send FCM notifications using PushNotificationService
         $successCount = 0;
         $failedCount = 0;
 
-        foreach ($users as $user) {
-            if ($this->sendFcmNotification($user->fcm_token, $data['title'], $data['message'])) {
+        foreach ($tokens as $token) {
+            try {
+                $this->pushService->sendToTokens(
+                    [$token],
+                    $data['title'],
+                    $data['message'],
+                    $fcmData
+                );
                 $successCount++;
-            } else {
+            } catch (\Exception $e) {
+                Log::error('Broadcast notification failed for token', [
+                    'token' => substr($token, 0, 20) . '...',
+                    'error' => $e->getMessage(),
+                ]);
                 $failedCount++;
             }
         }
@@ -81,7 +119,7 @@ class BroadcastController extends Controller
         ]);
 
         return redirect()->route('admin.broadcast.index')
-            ->with('status', "Notifikasi berhasil dikirim ke {$successCount} dari {$users->count()} penerima.");
+            ->with('status', "Notifikasi berhasil dikirim ke {$successCount} dari " . count($tokens) . " penerima.");
     }
 
     public function show(BroadcastNotification $broadcast)
@@ -91,37 +129,18 @@ class BroadcastController extends Controller
         return view('admin.broadcast.show', compact('broadcast'));
     }
 
-    private function sendFcmNotification(string $token, string $title, string $body): bool
+    public function destroy(BroadcastNotification $broadcast)
     {
-        try {
-            // Get FCM server key from config/services.php or .env
-            $serverKey = config('services.fcm.server_key');
-
-            if (empty($serverKey)) {
-                Log::warning('FCM server key not configured');
-                return false;
-            }
-
-            $response = Http::withHeaders([
-                'Authorization' => 'key=' . $serverKey,
-                'Content-Type' => 'application/json',
-            ])->post('https://fcm.googleapis.com/fcm/send', [
-                'to' => $token,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                ],
-                'data' => [
-                    'title' => $title,
-                    'body' => $body,
-                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
-                ],
-            ]);
-
-            return $response->successful();
-        } catch (\Exception $e) {
-            Log::error('FCM notification failed: ' . $e->getMessage());
-            return false;
+        // Delete image if exists
+        if ($broadcast->image) {
+            Storage::disk('public')->delete($broadcast->image);
         }
+
+        $broadcast->delete();
+
+        return redirect()->route('admin.broadcast.index')
+            ->with('status', 'Notifikasi berhasil dihapus.');
     }
 }
+
+

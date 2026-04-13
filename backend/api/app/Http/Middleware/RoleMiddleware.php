@@ -21,11 +21,17 @@ class RoleMiddleware
             return redirect()->route('admin.login');
         }
 
-        if (! in_array($user->role, $roles, true)) {
-            if ($request->expectsJson()) {
-                return response()->json(['message' => 'Forbidden.'], 403);
+        $allowedRoles = (array) $roles;
+        $isSuperAdminRequired = in_array('SUPERADMIN', $allowedRoles, true);
+
+        if (! in_array($user->role, $allowedRoles, true)) {
+            // Special case: if SUPERADMIN is required, HRD is also allowed
+            if (! ($isSuperAdminRequired && $user->isSuperAdmin())) {
+                if ($request->expectsJson()) {
+                    return response()->json(['message' => 'Forbidden.'], 403);
+                }
+                abort(403);
             }
-            abort(403);
         }
 
         return $next($request);

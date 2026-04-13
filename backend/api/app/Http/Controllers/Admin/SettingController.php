@@ -37,7 +37,7 @@ class SettingController extends Controller
         }
 
         $request->validate([
-            'logo' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|max:10240',
             'footer_address' => 'nullable|string',
             'footer_email' => 'nullable|email',
             'footer_phone' => 'nullable|string',

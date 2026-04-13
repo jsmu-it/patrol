@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSMU Guard - Sistem Manajemen Keamanan Terpadu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --primary: #0C6CF2;
+            --primary-dark: #0a5acc;
+            --secondary: #0f172a;
+            --accent: #06b6d4;
+            --accent2: #8b5cf6;
+            --gold: #f59e0b;
+            --text: #334155;
+            --text-light: #64748b;
+            --bg: #f8fafc;
+            --white: #fff;
+            --success: #10b981;
+            --glass: rgba(255, 255, 255, 0.1)
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden
+        }
+
+        /* Premium Slide Styles */
+        .slide {
+            min-height: 100vh;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden
+        }
+
+        .slide-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            color: white
+        }
+
+        .slide-light {
+            background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)
+        }
+
+        .slide-accent {
+            background: linear-gradient(135deg, #0C6CF2 0%, #06b6d4 50%, #8b5cf6 100%);
+            color: white
+        }
+
+        .slide-dark {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1e3f 50%, #0f172a 100%);
+            color: white
+        }
+
+        /* Animated Background */
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.3;
+            pointer-events: none
+        }
+
+        .glow-1 {
+            background: #0C6CF2;
+            top: -200px;
+            left: -200px;
+            animation: float 8s ease-in-out infinite
+        }
+
+        .glow-2 {
+            background: #8b5cf6;
+            bottom: -200px;
+            right: -200px;
+            animation: float 10s ease-in-out infinite reverse
+        }
+
+        .glow-3 {
+            background: #06b6d4;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 6s ease-in-out infinite
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0)
+            }
+
+            50% {
+                transform: translateY(-30px)
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1)
+            }
+
+            50% {
+                opacity: 0.4;
+                transform: translate(-50%, -50%) scale(1.1)
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0
+            }
+
+            to {
+                opacity: 1
+            }
+        }
+
+        /* Logo */
+        .logo-img {
+            height: 100px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 30px rgba(12, 108, 242, 0.3))
+        }
+
+        .logo-footer {
+            height: 60px;
+            width: auto;
+            object-fit: contain
+        }
+
+        /* Download Button */
+        .download-btn {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(12, 108, 242, 0.4);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all .3s;
+            backdrop-filter: blur(10px)
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 40px rgba(12, 108, 242, 0.5)
+        }
+
+        /* Typography */
+        .mega-title {
+            font-size: 80px;
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 50%, #fff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 20px 60px rgba(0, 0, 0, 0.3)
+        }
+
+        .main-title {
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #e2e8f0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 800;
+            color: var(--secondary);
+            margin-bottom: 24px;
+            line-height: 1.1
+        }
+
+        .section-title-white {
+            font-size: 48px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 24px;
+            line-height: 1.1
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #94a3b8;
+            max-width: 800px;
+            margin: 0 auto 40px;
+            line-height: 1.6
+        }
+
+        .section-num {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            letter-spacing: 3px;
+            margin-bottom: 16px;
+            text-transform: uppercase
+        }
+
+        .section-desc {
+            font-size: 20px;
+            color: var(--text-light);
+            max-width: 700px;
+            margin-bottom: 48px;
+            line-height: 1.7
+        }
+
+        /* Premium Badge */
+        .premium-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--gold) 0%, #fbbf24 100%);
+            color: #78350f;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4)
+        }
+
+        .glass-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600
+        }
+
+        /* Grids */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 28px
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px
+        }
+
+        /* Premium Cards */
+        .card-premium {
+            background: white;
+            border-radius: 24px;
+            padding: 36px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all .4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden
+        }
+
+        .card-premium::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--accent2))
+        }
+
+        .card-premium:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15)
+        }
+
+        .card-dark {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 36px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all .4s
+        }
+
+        .card-dark:hover {
+            transform: translateY(-8px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3)
+        }
+
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            font-size: 32px;
+            box-shadow: 0 10px 30px rgba(12, 108, 242, 0.3)
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 12px
+        }
+
+        .card-title-white {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 12px
+        }
+
+        .card-desc {
+            font-size: 15px;
+            color: var(--text-light);
+            line-height: 1.7
+        }
+
+        .card-desc-white {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.7
+        }
+
+        /* Feature List Premium */
+        .feature-list-premium {
+            list-style: none
+        }
+
+        .feature-list-premium li {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 1px solid #e2e8f0
+        }
+
+        .feature-list-premium li:last-child {
+            border-bottom: none
+        }
+
+        .check-premium {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--success) 0%, #34d399 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3)
+        }
+
+        /* Stats Premium */
+        .stat-premium {
+            text-align: center;
+            padding: 40px 24px
+        }
+
+        .stat-number {
+            font-size: 64px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            line-height: 1
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .stat-white .stat-number {
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text
+        }
+
+        .stat-white .stat-label {
+            color: rgba(255, 255, 255, 0.7)
+        }
+
+        /* Highlight Box Premium */
+        .highlight-premium {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent2) 100%);
+            color: white;
+            padding: 48px;
+            border-radius: 28px;
+            margin: 40px 0;
+            box-shadow: 0 20px 60px rgba(12, 108, 242, 0.3);
+            position: relative;
+            overflow: hidden
+        }
+
+        .highlight-premium::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            pointer-events: none
+        }
+
+        .highlight-premium h3 {
+            font-size: 26px;
+            margin-bottom: 16px;
+            font-weight: 700
+        }
+
+        .highlight-premium p {
+            font-size: 17px;
+            opacity: 0.9;
+            line-height: 1.7
+        }
+
+        /* Tags Premium */
+        .tag-premium {
+            display: inline-block;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            color: #0369a1;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin: 3px
+        }
+
+        .tag-success {
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+            color: #166534
+        }
+
+        .tag-purple {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+            color: #7c3aed
+        }
+
+        .tag-gold {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e
+        }
+
+        /* Process Steps */
+        .step-premium {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 32px
+        }
+
+        .step-num {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            flex-shrink: 0;
+            box-shadow: 0 8px 25px rgba(12, 108, 242, 0.3)
+        }
+
+        /* Info Box Premium */
+        .info-premium {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary)
+        }
+
+        .info-premium h4 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 10px
+        }
+
+        .info-premium p {
+            font-size: 14px;
+            color: var(--text-light);
+            line-height: 1.6
+        }
+
+        /* Flow Diagram */
+        .flow-premium {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            padding: 40px 0
+        }
+
+        .flow-box {
+            background: white;
+            border-radius: 20px;
+            padding: 32px 24px;
+            text-align: center;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08);
+            min-width: 160px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all .3s
+        }
+
+        .flow-box:hover {
+            transform: scale(1.05)
+        }
+
+        .flow-arrow {
+            font-size: 32px;
+            color: var(--primary);
+            animation: pulse 2s infinite
+        }
+
+        /* Tech Stack */
+        .tech-premium {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            padding: 16px 24px;
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            margin: 6px;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all .3s
+        }
+
+        .tech-premium:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1)
+        }
+
+        /* Divider */
+        .divider-premium {
+            width: 80px;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--accent), var(--accent2));
+            border-radius: 3px;
+            margin: 20px 0 32px
+        }
+
+        /* Page Number */
+        .page-num {
+            position: absolute;
+            bottom: 30px;
+            right: 80px;
+            font-size: 13px;
+            color: var(--text-light);
+            font-weight: 600
+        }
+
+        .page-num-white {
+            color: rgba(255, 255, 255, 0.5)
+        }
+
+        /* CTA Section */
+        .cta-box {
+            background: linear-gradient(135deg, rgba(12, 108, 242, 0.1) 0%, rgba(6, 182, 212, 0.1) 100%);
+            border: 2px solid var(--primary);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 40px
+        }
+
+        .cta-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 16px
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 10px 40px rgba(12, 108, 242, 0.3);
+            transition: all .3s
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 15px 50px rgba(12, 108, 242, 0.4)
+        }
+
+        /* Contact Cards */
+        .contact-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 32px;
+            text-align: center;
+            transition: all .3s
+        }
+
+        .contact-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-8px)
+        }
+
+        .contact-icon {
+            font-size: 40px;
+            margin-bottom: 16px
+        }
+
+        .contact-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        .contact-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: white
+        }
+
+        /* Testimonial Style */
+        .trust-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 50px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 20px
+        }
+
+        .trust-item {
+            text-align: center;
+            padding: 0 30px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1)
+        }
+
+        .trust-item:last-child {
+            border-right: none
+        }
+
+        .trust-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 4px
+        }
+
+        .trust-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px
+        }
+
+        /* Print Styles */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background: white !important;
+            }
+
+            .slide {
+                page-break-after: always;
+                page-break-inside: avoid;
+                min-height: 100vh;
+                height: 100vh;
+                max-height: 100vh;
+                padding: 40px 50px !important;
+                overflow: hidden !important;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            .slide:last-child {
+                page-break-after: auto;
+            }
+
+            .download-btn {
+                display: none !important;
+            }
+
+            .bg-glow {
+                display: none !important;
+            }
+
+            /* Reduce sizes for print */
+            .mega-title {
+                font-size: 56px !important;
+            }
+
+            .main-title {
+                font-size: 42px !important;
+            }
+
+            .section-title,
+            .section-title-white {
+                font-size: 36px !important;
+            }
+
+            .subtitle {
+                font-size: 18px !important;
+            }
+
+            .stat-number {
+                font-size: 48px !important;
+            }
+
+            .card-premium,
+            .card-dark {
+                padding: 20px !important;
+            }
+
+            .card-icon {
+                width: 50px !important;
+                height: 50px !important;
+                font-size: 24px !important;
+            }
+
+            .grid-4 {
+                gap: 16px !important;
+            }
+
+            .grid-3 {
+                gap: 20px !important;
+            }
+
+            .highlight-premium {
+                padding: 24px !important;
+                margin: 20px 0 !important;
+            }
+
+            .trust-section {
+                margin-top: 30px !important;
+                padding: 20px !important;
+            }
+
+            .trust-number {
+                font-size: 28px !important;
+            }
+
+            .flow-premium {
+                padding: 20px 0 !important;
+                gap: 16px !important;
+            }
+
+            .flow-box {
+                padding: 20px 16px !important;
+                min-width: 120px !important;
+            }
+
+            .step-premium {
+                margin-bottom: 16px !important;
+            }
+
+            .feature-list-premium li {
+                padding: 12px 0 !important;
+            }
+
+            .contact-card {
+                padding: 20px !important;
+            }
+
+            /* Disable animations */
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="download-btn" onclick="window.print()">📥 Download PDF</button>
+
+    <!-- Slide 1: Hero Title -->
+    <div class="slide slide-hero" style="text-align:center">
+        <div class="bg-glow glow-1"></div>
+        <div class="bg-glow glow-2"></div>
+        <div class="bg-glow glow-3"></div>
+        <img src="/images/admin-logo.png" alt="JSMU Guard" class="logo-img" style="margin-bottom:40px">
+        <h1 class="mega-title">JSMU Guard</h1>
+        <p class="subtitle">Sistem Manajemen Keamanan Terpadu Berbasis Teknologi untuk Pengelolaan Satuan Pengamanan
+            Modern & Profesional</p>
+        <div class="premium-badge">⭐ SOLUSI ENTERPRISE TERDEPAN 2026</div>
+        <div class="trust-section">
+            <div class="trust-item">
+                <div class="trust-number">99.9%</div>
+                <div class="trust-label">Uptime Server</div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-number">50+</div>
+                <div class="trust-label">Fitur Premium</div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-number">24/7</div>
+                <div class="trust-label">Monitoring</div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-number">100%</div>
+                <div class="trust-label">Cloud Based</div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">1</div>
+    </div>
+
+    <!-- Slide 2: Agenda -->
+    <div class="slide slide-light">
+        <p class="section-num">📋 Agenda Presentasi</p>
+        <h2 class="section-title">Apa yang Akan Anda Dapatkan?</h2>
+        <div class="divider-premium"></div>
+        <div class="grid-2">
+            <ul class="feature-list-premium">
+                <li><span class="check-premium">1</span>
+                    <div><strong style="font-size:18px">Gambaran Umum & Arsitektur</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Platform terintegrasi dengan teknologi terkini
+                        </p>
+                    </div>
+                </li>
+                <li><span class="check-premium">2</span>
+                    <div><strong style="font-size:18px">Fitur Absensi Anti-Fraud</strong>
+                        <p style="color:var(--text-light);margin-top:6px">GPS, Geofencing, Selfie Verification, Shift
+                        </p>
+                    </div>
+                </li>
+                <li><span class="check-premium">3</span>
+                    <div><strong style="font-size:18px">Sistem Patroli Real-time</strong>
+                        <p style="color:var(--text-light);margin-top:6px">QR Checkpoint, GPS Tracking, Photo Report</p>
+                    </div>
+                </li>
+                <li><span class="check-premium">4</span>
+                    <div><strong style="font-size:18px">Manajemen Cuti & Izin</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Approval berjenjang, notifikasi otomatis</p>
+                    </div>
+                </li>
+                <li><span class="check-premium">5</span>
+                    <div><strong style="font-size:18px">Admin Dashboard Lengkap</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Laporan, Payroll, HRD, CMS Website</p>
+                    </div>
+                </li>
+                <li><span class="check-premium">6</span>
+                    <div><strong style="font-size:18px">Keamanan Data Enterprise</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Enkripsi, Audit Trail, Backup Otomatis</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="highlight-premium">
+                <div style="font-size:80px;margin-bottom:24px">🏆</div>
+                <h3>Mengapa JSMU Guard?</h3>
+                <p>Solusi end-to-end yang telah terbukti meningkatkan efisiensi operasional keamanan hingga
+                    <strong>85%</strong> dengan transparansi penuh dan real-time monitoring.
+                </p>
+                <div style="margin-top:24px;display:flex;gap:12px;flex-wrap:wrap">
+                    <span class="glass-badge">✓ Teruji</span>
+                    <span class="glass-badge">✓ Terpercaya</span>
+                    <span class="glass-badge">✓ Terdepan</span>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">2</div>
+    </div>
+
+    <!-- Slide 3: Overview -->
+    <div class="slide slide-dark">
+        <div class="bg-glow glow-1"></div>
+        <div class="bg-glow glow-2"></div>
+        <p class="section-num" style="color:#06b6d4">01 / Gambaran Umum</p>
+        <h2 class="section-title-white">Platform Manajemen Keamanan Terintegrasi</h2>
+        <p style="font-size:20px;color:rgba(255,255,255,0.7);max-width:800px;margin-bottom:50px">Mengelola seluruh
+            operasional satuan pengamanan dalam satu ekosistem digital yang powerful.</p>
+        <div class="grid-4">
+            <div class="card-dark" style="text-align:center">
+                <div class="stat-white">
+                    <div class="stat-number">3</div>
+                    <div class="stat-label">Platform</div>
+                </div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:12px">Mobile, Web Admin, API</p>
+            </div>
+            <div class="card-dark" style="text-align:center">
+                <div class="stat-white">
+                    <div class="stat-number">50+</div>
+                    <div class="stat-label">Fitur</div>
+                </div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:12px">Lengkap & Terintegrasi</p>
+            </div>
+            <div class="card-dark" style="text-align:center">
+                <div class="stat-white">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Monitoring</div>
+                </div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:12px">Real-time Dashboard</p>
+            </div>
+            <div class="card-dark" style="text-align:center">
+                <div class="stat-white">
+                    <div class="stat-number">99.9%</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px;margin-top:12px">Server Reliability</p>
+            </div>
+        </div>
+        <div
+            style="background:rgba(255,255,255,0.05);border-radius:20px;padding:32px;margin-top:40px;border:1px solid rgba(255,255,255,0.1)">
+            <h3 style="color:white;font-size:22px;margin-bottom:16px">🎯 Visi & Misi</h3>
+            <p style="color:rgba(255,255,255,0.8);font-size:17px;line-height:1.8">Menyediakan solusi teknologi terdepan
+                yang memudahkan pengelolaan tenaga keamanan profesional, meningkatkan efisiensi operasional, dan
+                memberikan <strong>transparansi penuh</strong> kepada klien dengan data real-time yang akurat.</p>
+        </div>
+        <div class="page-num page-num-white">3</div>
+    </div>
+
+    <!-- Slide 4: Architecture -->
+    <div class="slide slide-light">
+        <p class="section-num">01 / Arsitektur Sistem</p>
+        <h2 class="section-title">Teknologi Modern & Scalable</h2>
+        <div class="divider-premium"></div>
+        <div class="flow-premium">
+            <div class="flow-box">
+                <div style="font-size:48px;margin-bottom:12px">📱</div>
+                <div style="font-weight:700;font-size:16px">Mobile App</div>
+                <div style="font-size:13px;color:var(--text-light)">Flutter</div>
+                <div style="margin-top:12px"><span class="tag-premium">Android</span><span
+                        class="tag-premium">iOS</span></div>
+            </div>
+            <div class="flow-arrow">⟶</div>
+            <div class="flow-box">
+                <div style="font-size:48px;margin-bottom:12px">⚙️</div>
+                <div style="font-weight:700;font-size:16px">Backend API</div>
+                <div style="font-size:13px;color:var(--text-light)">Laravel 11</div>
+                <div style="margin-top:12px"><span class="tag-success">REST API</span><span
+                        class="tag-success">FCM</span></div>
+            </div>
+            <div class="flow-arrow">⟶</div>
+            <div class="flow-box">
+                <div style="font-size:48px;margin-bottom:12px">🗄️</div>
+                <div style="font-weight:700;font-size:16px">Database</div>
+                <div style="font-size:13px;color:var(--text-light)">MySQL 8</div>
+                <div style="margin-top:12px"><span class="tag-purple">Encrypted</span></div>
+            </div>
+            <div class="flow-arrow">⟶</div>
+            <div class="flow-box">
+                <div style="font-size:48px;margin-bottom:12px">🖥️</div>
+                <div style="font-weight:700;font-size:16px">Admin Panel</div>
+                <div style="font-size:13px;color:var(--text-light)">Web Dashboard</div>
+                <div style="margin-top:12px"><span class="tag-gold">Responsive</span></div>
+            </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:40px">
+            <span class="tech-premium"><span style="font-size:24px">🐘</span><strong>PHP 8.2</strong></span>
+            <span class="tech-premium"><span style="font-size:24px">🎯</span><strong>Flutter 3.x</strong></span>
+            <span class="tech-premium"><span style="font-size:24px">🔥</span><strong>Firebase</strong></span>
+            <span class="tech-premium"><span style="font-size:24px">☁️</span><strong>Cloud VPS</strong></span>
+            <span class="tech-premium"><span style="font-size:24px">🔒</span><strong>SSL/HTTPS</strong></span>
+            <span class="tech-premium"><span style="font-size:24px">📍</span><strong>Google Maps</strong></span>
+        </div>
+        <div class="page-num">4</div>
+    </div>
+
+    <!-- Slide 5: Attendance Features -->
+    <div class="slide slide-accent">
+        <div class="bg-glow glow-3" style="background:#fff;opacity:0.1"></div>
+        <p class="section-num" style="color:rgba(255,255,255,0.7)">02 / Fitur Unggulan</p>
+        <h2 class="section-title-white">Sistem Absensi Anti-Fraud</h2>
+        <p style="font-size:20px;color:rgba(255,255,255,0.8);max-width:700px;margin-bottom:50px">Triple verification
+            untuk memastikan kehadiran yang valid dan tidak bisa dimanipulasi.</p>
+        <div class="grid-4">
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">📍</div>
+                <h3 class="card-title-white">GPS Tracking</h3>
+                <p class="card-desc-white">Koordinat lokasi direkam otomatis setiap clock-in/out</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">🎯</div>
+                <h3 class="card-title-white">Geofencing</h3>
+                <p class="card-desc-white">Absensi hanya valid dalam radius lokasi yang ditentukan</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">📸</div>
+                <h3 class="card-title-white">Selfie Verification</h3>
+                <p class="card-desc-white">Foto wajah wajib untuk validasi identitas petugas</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">⏰</div>
+                <h3 class="card-title-white">Smart Shift</h3>
+                <p class="card-desc-white">Mendukung shift pagi, siang, malam & overnight</p>
+            </div>
+        </div>
+        <div style="display:flex;gap:40px;margin-top:50px;justify-content:center">
+            <div style="text-align:center">
+                <div style="font-size:48px;margin-bottom:8px">🛡️</div>
+                <div style="color:white;font-weight:700">Anti Titip Absen</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:48px;margin-bottom:8px">📊</div>
+                <div style="color:white;font-weight:700">Real-time Sync</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:48px;margin-bottom:8px">📱</div>
+                <div style="color:white;font-weight:700">Offline Mode</div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">5</div>
+    </div>
+
+    <!-- Slide 6: GPS & Geotagging Detail -->
+    <div class="slide slide-light">
+        <p class="section-num">02 / GPS & Geotagging</p>
+        <h2 class="section-title">Pelacakan Lokasi Presisi Tinggi</h2>
+        <div class="divider-premium"></div>
+        <div class="grid-2">
+            <div>
+                <h3 style="font-size:24px;margin-bottom:28px;color:var(--secondary)">Bagaimana GPS Tracking Bekerja?
+                </h3>
+                <div class="step-premium">
+                    <div class="step-num">1</div>
+                    <div><strong style="font-size:17px">Ambil Koordinat GPS</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Latitude, longitude, dan altitude dari device
+                        </p>
+                    </div>
+                </div>
+                <div class="step-premium">
+                    <div class="step-num">2</div>
+                    <div><strong style="font-size:17px">Validasi Akurasi</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Minimal akurasi 50 meter untuk data valid</p>
+                    </div>
+                </div>
+                <div class="step-premium">
+                    <div class="step-num">3</div>
+                    <div><strong style="font-size:17px">Simpan dengan Timestamp</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Koordinat + waktu sebagai bukti absensi</p>
+                    </div>
+                </div>
+                <div class="step-premium">
+                    <div class="step-num">4</div>
+                    <div><strong style="font-size:17px">Visualisasi di Map</strong>
+                        <p style="color:var(--text-light);margin-top:6px">Admin melihat lokasi di Google Maps</p>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="info-premium" style="border-left-color:#10b981">
+                    <h4>📍 Data yang Direkam</h4>
+                    <p>Latitude, Longitude, Accuracy, Altitude, Timestamp, Device ID, IP Address</p>
+                </div>
+                <div class="info-premium" style="border-left-color:#0C6CF2">
+                    <h4>🗺️ Google Maps Integration</h4>
+                    <p>Lokasi absensi ditampilkan dengan marker interaktif dan info detail</p>
+                </div>
+                <div class="info-premium" style="border-left-color:#8b5cf6">
+                    <h4>📊 Export untuk Audit</h4>
+                    <p>Semua data lokasi dapat di-export PDF/Excel untuk keperluan audit</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">6</div>
+    </div>
+
+    <!-- Slide 7: Geofencing -->
+    <div class="slide slide-dark">
+        <div class="bg-glow glow-2"></div>
+        <p class="section-num" style="color:#06b6d4">02 / Geofencing</p>
+        <h2 class="section-title-white">Pembatasan Area Absensi Otomatis</h2>
+        <div class="grid-2">
+            <div style="text-align:center">
+                <div
+                    style="width:280px;height:280px;border:5px dashed #06b6d4;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;background:rgba(6,182,212,0.1)">
+                    <div>
+                        <div style="font-size:64px">📍</div>
+                        <div style="color:white;font-size:18px;margin-top:12px;font-weight:700">LOKASI PROYEK</div>
+                    </div>
+                </div>
+                <div style="margin-top:24px;color:rgba(255,255,255,0.8)">Radius: <strong
+                        style="color:#06b6d4;font-size:24px">100 - 1000m</strong></div>
+                <p style="font-size:14px;color:rgba(255,255,255,0.5);margin-top:8px">Dapat dikonfigurasi per proyek</p>
+            </div>
+            <div>
+                <ul class="feature-list-premium" style="border-color:rgba(255,255,255,0.1)">
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="check-premium">✓</span>
+                        <div><strong style="color:white;font-size:17px">Radius Kustom per Proyek</strong>
+                            <p style="color:rgba(255,255,255,0.6);margin-top:6px">Setiap lokasi bisa punya radius
+                                berbeda</p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="check-premium">✓</span>
+                        <div><strong style="color:white;font-size:17px">Auto-Reject di Luar Area</strong>
+                            <p style="color:rgba(255,255,255,0.6);margin-top:6px">Sistem otomatis menolak absensi
+                                invalid</p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="check-premium">✓</span>
+                        <div><strong style="color:white;font-size:17px">Multiple Geofence</strong>
+                            <p style="color:rgba(255,255,255,0.6);margin-top:6px">Satu proyek bisa punya beberapa titik
+                            </p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="check-premium">✓</span>
+                        <div><strong style="color:white;font-size:17px">Admin Override</strong>
+                            <p style="color:rgba(255,255,255,0.6);margin-top:6px">Manual approval untuk kasus khusus</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="page-num page-num-white">7</div>
+    </div>
+
+    <!-- Slide 8: Selfie Verification -->
+    <div class="slide slide-light">
+        <p class="section-num">02 / Selfie Verification</p>
+        <h2 class="section-title">Verifikasi Identitas Visual</h2>
+        <div class="divider-premium"></div>
+        <div class="grid-2">
+            <div>
+                <h3 style="font-size:24px;margin-bottom:28px;color:var(--secondary)">Mengapa Selfie Wajib?</h3>
+                <ul class="feature-list-premium">
+                    <li><span class="check-premium">🛡️</span>
+                        <div><strong style="font-size:17px">Mencegah Titip Absen</strong>
+                            <p style="color:var(--text-light);margin-top:6px">Foto wajah memastikan yang absen adalah
+                                orangnya langsung</p>
+                        </div>
+                    </li>
+                    <li><span class="check-premium">📸</span>
+                        <div><strong style="font-size:17px">Bukti Visual</strong>
+                            <p style="color:var(--text-light);margin-top:6px">Dokumentasi kehadiran yang tidak bisa
+                                dipalsukan</p>
+                        </div>
+                    </li>
+                    <li><span class="check-premium">👔</span>
+                        <div><strong style="font-size:17px">Cek Kerapian Seragam</strong>
+                            <p style="color:var(--text-light);margin-top:6px">Admin bisa memantau penampilan petugas</p>
+                        </div>
+                    </li>
+                    <li><span class="check-premium">⏱️</span>
+                        <div><strong style="font-size:17px">Watermark Otomatis</strong>
+                            <p style="color:var(--text-light);margin-top:6px">Waktu dan lokasi tercetak di foto</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <div class="card-premium"
+                    style="background:linear-gradient(135deg,#dcfce7 0%,#bbf7d0 100%);border:none">
+                    <h4 style="color:#166534;font-size:18px;margin-bottom:12px">✅ Alur Verifikasi</h4>
+                    <p style="color:#166534">Buka Kamera → Ambil Selfie → Upload ke Server → Tampil di Laporan</p>
+                </div>
+                <div class="info-premium">
+                    <h4>📂 Penyimpanan Aman</h4>
+                    <p>Foto dienkripsi dan disimpan di cloud dengan retensi sesuai kebijakan</p>
+                </div>
+                <div class="info-premium">
+                    <h4>🔒 Akses Terbatas</h4>
+                    <p>Hanya admin berwenang yang bisa mengakses foto absensi</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">8</div>
+    </div>
+
+    <!-- Slide 9: Shift Management -->
+    <div class="slide slide-accent">
+        <p class="section-num" style="color:rgba(255,255,255,0.7)">02 / Shift Management</p>
+        <h2 class="section-title-white">Manajemen Shift Fleksibel</h2>
+        <div class="grid-3" style="margin-top:40px">
+            <div class="card-dark" style="border-left:4px solid #f59e0b">
+                <div style="font-size:48px;margin-bottom:16px">🌅</div>
+                <h3 class="card-title-white">Shift Pagi</h3>
+                <p style="color:rgba(255,255,255,0.8);font-size:24px;font-weight:700">06:00 - 14:00</p>
+                <p class="card-desc-white" style="margin-top:8px">Untuk area perkantoran standar</p>
+            </div>
+            <div class="card-dark" style="border-left:4px solid #0ea5e9">
+                <div style="font-size:48px;margin-bottom:16px">☀️</div>
+                <h3 class="card-title-white">Shift Siang</h3>
+                <p style="color:rgba(255,255,255,0.8);font-size:24px;font-weight:700">14:00 - 22:00</p>
+                <p class="card-desc-white" style="margin-top:8px">Aktivitas sore hingga malam</p>
+            </div>
+            <div class="card-dark" style="border-left:4px solid #8b5cf6">
+                <div style="font-size:48px;margin-bottom:16px">🌙</div>
+                <h3 class="card-title-white">Shift Malam</h3>
+                <p style="color:rgba(255,255,255,0.8);font-size:24px;font-weight:700">22:00 - 06:00</p>
+                <p class="card-desc-white" style="margin-top:8px">Overnight dengan auto-handling</p>
+            </div>
+        </div>
+        <div style="display:flex;gap:60px;justify-content:center;margin-top:50px">
+            <div style="text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">⚙️</div>
+                <div style="color:white;font-weight:600">Jam Fleksibel</div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px">Custom per proyek</p>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">🔄</div>
+                <div style="color:white;font-weight:600">Overnight Support</div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px">Lewat tengah malam</p>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">📋</div>
+                <div style="color:white;font-weight:600">Auto-Assign</div>
+                <p style="color:rgba(255,255,255,0.6);font-size:13px">Penugasan otomatis</p>
+            </div>
+        </div>
+        <div class="page-num page-num-white">9</div>
+    </div>
+
+    <!-- Slide 10: Patrol System -->
+    <div class="slide slide-light">
+        <p class="section-num">03 / Sistem Patroli</p>
+        <h2 class="section-title">Patroli Digital Real-time</h2>
+        <p class="section-desc">Monitoring patroli dengan verifikasi checkpoint menggunakan teknologi QR Code dan GPS
+            tracking.</p>
+        <div class="grid-4">
+            <div class="card-premium">
+                <div class="card-icon">📱</div>
+                <h3 class="card-title">QR Code Scan</h3>
+                <p class="card-desc">Scan QR unik di setiap titik checkpoint</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">📍</div>
+                <h3 class="card-title">GPS Tracking</h3>
+                <p class="card-desc">Lokasi petugas direkam saat scan</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">📸</div>
+                <h3 class="card-title">Photo Report</h3>
+                <p class="card-desc">Foto kondisi + catatan lapangan</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">⏰</div>
+                <h3 class="card-title">Auto Timestamp</h3>
+                <p class="card-desc">Waktu kunjungan tercatat otomatis</p>
+            </div>
+        </div>
+        <div class="highlight-premium" style="margin-top:40px">
+            <h3>🔄 Alur Patroli</h3>
+            <p style="font-size:18px">Mulai Patroli → Scan Checkpoint 1 → Foto + Catatan → Scan Checkpoint 2 → ... →
+                Selesai & Laporan Otomatis</p>
+        </div>
+        <div class="page-num">10</div>
+    </div>
+
+    <!-- Slide 11: Leave Management -->
+    <div class="slide slide-dark">
+        <div class="bg-glow glow-1"></div>
+        <p class="section-num" style="color:#06b6d4">04 / Cuti & Izin</p>
+        <h2 class="section-title-white">Pengajuan Cuti Online</h2>
+        <div class="grid-3" style="margin-top:40px">
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">📅</div>
+                <h3 class="card-title-white">Jenis Cuti Kustom</h3>
+                <p class="card-desc-white">Tahunan, sakit, melahirkan, menikah, dll</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">💰</div>
+                <h3 class="card-title-white">Saldo Otomatis</h3>
+                <p class="card-desc-white">Dihitung berdasarkan masa kerja</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">✅</div>
+                <h3 class="card-title-white">Approval Berjenjang</h3>
+                <p class="card-desc-white">Atasan → Admin → Approved</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">📸</div>
+                <h3 class="card-title-white">Upload Bukti</h3>
+                <p class="card-desc-white">Lampirkan surat dokter / dokumen</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">🔔</div>
+                <h3 class="card-title-white">Push Notification</h3>
+                <p class="card-desc-white">Notifikasi setiap update status</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">❌</div>
+                <h3 class="card-title-white">Batalkan Cuti</h3>
+                <p class="card-desc-white">Bisa dibatalkan sebelum approve</p>
+            </div>
+        </div>
+        <div class="page-num page-num-white">11</div>
+    </div>
+
+    <!-- Slide 12: Admin Dashboard -->
+    <div class="slide slide-light">
+        <p class="section-num">05 / Admin Dashboard</p>
+        <h2 class="section-title">Panel Kontrol Lengkap</h2>
+        <p class="section-desc">Kelola seluruh operasional dari satu dashboard yang powerful dan user-friendly.</p>
+        <div class="grid-4">
+            <div class="card-premium">
+                <div class="card-icon">👥</div>
+                <h3 class="card-title">Manajemen User</h3>
+                <p class="card-desc">CRUD, import Excel, 100+ field data profil</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">📍</div>
+                <h3 class="card-title">Proyek & Lokasi</h3>
+                <p class="card-desc">Geofence, checkpoint, penugasan</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">📊</div>
+                <h3 class="card-title">Laporan & Analitik</h3>
+                <p class="card-desc">Absensi, patroli, export PDF/Excel</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">✅</div>
+                <h3 class="card-title">Approval Center</h3>
+                <p class="card-desc">Cuti, izin, lembur dalam satu tempat</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">💰</div>
+                <h3 class="card-title">Payroll</h3>
+                <p class="card-desc">Gaji, potongan, slip digital</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">📝</div>
+                <h3 class="card-title">PKWT</h3>
+                <p class="card-desc">Kontrak kerja & perpanjangan</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">🧠</div>
+                <h3 class="card-title">Psikotest</h3>
+                <p class="card-desc">PAPIKOSTIK & Kraepelin online</p>
+            </div>
+            <div class="card-premium">
+                <div class="card-icon">🌐</div>
+                <h3 class="card-title">CMS Website</h3>
+                <p class="card-desc">Company profile & karir</p>
+            </div>
+        </div>
+        <div class="page-num">12</div>
+    </div>
+
+    <!-- Slide 13: Data Security -->
+    <div class="slide slide-accent">
+        <p class="section-num" style="color:rgba(255,255,255,0.7)">06 / Keamanan Data</p>
+        <h2 class="section-title-white">Proteksi Enterprise-Grade</h2>
+        <div class="grid-3" style="margin-top:40px">
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">🔐</div>
+                <h3 class="card-title-white">Enkripsi Data</h3>
+                <p class="card-desc-white">Password Bcrypt hash, HTTPS/SSL untuk transit, encrypted at rest</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">🔑</div>
+                <h3 class="card-title-white">JWT Authentication</h3>
+                <p class="card-desc-white">Token-based auth dengan expiry dan refresh mechanism</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">👥</div>
+                <h3 class="card-title-white">Role-Based Access</h3>
+                <p class="card-desc-white">Superadmin, Admin, HRD, Project Admin, Guard</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">📝</div>
+                <h3 class="card-title-white">Audit Trail</h3>
+                <p class="card-desc-white">Semua aktivitas tercatat: siapa, kapan, apa</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">🛡️</div>
+                <h3 class="card-title-white">CSRF & XSS Protection</h3>
+                <p class="card-desc-white">Proteksi dari serangan web umum</p>
+            </div>
+            <div class="card-dark">
+                <div style="font-size:48px;margin-bottom:16px">☁️</div>
+                <h3 class="card-title-white">Cloud Backup</h3>
+                <p class="card-desc-white">Backup harian untuk disaster recovery</p>
+            </div>
+        </div>
+        <div class="page-num page-num-white">13</div>
+    </div>
+
+    <!-- Slide 14: Summary -->
+    <div class="slide slide-light">
+        <p class="section-num">📋 Ringkasan</p>
+        <h2 class="section-title">Fitur Lengkap JSMU Guard</h2>
+        <div class="divider-premium"></div>
+        <div class="grid-4" style="font-size:14px">
+            <div class="card-premium" style="padding:28px">
+                <h4 style="color:var(--primary);margin-bottom:16px;font-size:16px">📱 Mobile App</h4>
+                <p style="color:var(--text-light);line-height:1.8">• Absensi GPS + Selfie<br>• Geofencing<br>• Patroli
+                    QR Code<br>• Pengajuan Cuti<br>• Riwayat Absensi<br>• Slip Gaji Digital<br>• Push Notification<br>•
+                    Offline Mode</p>
+            </div>
+            <div class="card-premium" style="padding:28px">
+                <h4 style="color:var(--primary);margin-bottom:16px;font-size:16px">🖥️ Admin Panel</h4>
+                <p style="color:var(--text-light);line-height:1.8">• Dashboard Analitik<br>• Manajemen User<br>•
+                    Manajemen Proyek<br>• Checkpoint QR<br>• Shift & Jadwal<br>• Approval Center<br>• Broadcast
+                    Notif<br>• Activity Log</p>
+            </div>
+            <div class="card-premium" style="padding:28px">
+                <h4 style="color:var(--primary);margin-bottom:16px;font-size:16px">📊 Laporan</h4>
+                <p style="color:var(--text-light);line-height:1.8">• Absensi Detail<br>• Patroli Timeline<br>• Rekap
+                    Cuti<br>• Payroll Report<br>• Export PDF/Excel<br>• Visualisasi Chart<br>• Filter by Date<br>•
+                    Filter by Project</p>
+            </div>
+            <div class="card-premium" style="padding:28px">
+                <h4 style="color:var(--primary);margin-bottom:16px;font-size:16px">🔐 Keamanan</h4>
+                <p style="color:var(--text-light);line-height:1.8">• SSL/HTTPS<br>• Bcrypt Hash<br>• JWT Token<br>•
+                    Role-Based Access<br>• Audit Trail<br>• CSRF Protection<br>• Rate Limiting<br>• Cloud Backup</p>
+            </div>
+        </div>
+        <div class="cta-box">
+            <div class="cta-title">Siap Tingkatkan Efisiensi Operasional Keamanan Anda?</div>
+            <p style="color:var(--text-light);margin-bottom:24px">Hubungi kami untuk demo dan konsultasi gratis</p>
+        </div>
+        <div class="page-num">14</div>
+    </div>
+
+    <!-- Slide 15: Closing -->
+    <div class="slide slide-hero" style="text-align:center">
+        <div class="bg-glow glow-1"></div>
+        <div class="bg-glow glow-2"></div>
+        <div class="bg-glow glow-3"></div>
+        <img src="/images/admin-logo.png" alt="JSMU Guard" class="logo-footer" style="margin-bottom:40px">
+        <h1 class="main-title" style="font-size:52px">Terima Kasih</h1>
+        <p class="subtitle">JSMU Guard - Solusi Digital Terpadu untuk Manajemen Keamanan Profesional</p>
+        <div class="grid-3" style="max-width:800px;margin:50px auto 0;gap:30px">
+            <div class="contact-card">
+                <div class="contact-icon">🌐</div>
+                <div class="contact-label">Website</div>
+                <div class="contact-value">guard.jsmu.co.id</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">📧</div>
+                <div class="contact-label">Email</div>
+                <div class="contact-value">info@jsmu.co.id</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">📱</div>
+                <div class="contact-label">Aplikasi</div>
+                <div class="contact-value">JSMU Guard Mobile</div>
+            </div>
+        </div>
+        <div style="margin-top:50px">
+            <div class="premium-badge">🤝 MARI BERMITRA</div>
+        </div>
+        <div class="page-num page-num-white">15</div>
+    </div>
+
+</body>
+
+</html>

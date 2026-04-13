@@ -8,8 +8,11 @@ class AppRoutes {
   static const patrolForm = '/patrol/form';
   static const patrolHistory = '/patrol/history';
   static const profile = '/profile';
+  static const cvView = '/profile/cv';
+  static const notifications = '/notifications';
   static const leaveList = '/leave-requests';
   static const leaveForm = '/leave-requests/new';
   static const payrollList = '/payroll';
   static const payrollDetail = '/payroll/detail';
+  static const adminLeaveApprovals = '/admin/leave-approvals';
 }

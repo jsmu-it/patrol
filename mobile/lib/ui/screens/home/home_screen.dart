@@ -15,6 +15,7 @@ import '../../../routes/app_router.dart';
 import '../../../services/attendance_service.dart';
 import '../../../services/connectivity_service.dart';
 import '../../../services/location_service.dart';
+import '../../../services/notification_service.dart';
 import '../../../services/offline_queue_service.dart';
 import '../../../services/shift_service.dart';
 import '../../../state/attendance/attendance_providers.dart';
@@ -110,9 +111,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         _pendingCount = count;
         // If there's a pending attendance item, update local state
         if (pendingType != null) {
-          _localClockedIn = pendingType == 'clock_in';
-          if (_localClockedIn == true) {
+          if (pendingType == 'clock_in') {
+            _localClockedIn = true;
             _localClockInTime = DateTime.now();
+          } else if (pendingType == 'clock_out') {
+            // Clock-out pending: reset button to ABSEN MASUK
+            _localClockedIn = false;
+            _localClockInTime = null;
           }
         }
       });
@@ -137,37 +142,87 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   Future<void> _refreshAttendanceAndUpdateState() async {
     try {
       final service = ref.read(attendanceServiceProvider);
+      final shiftService = ref.read(shiftServiceProvider);
       final now = DateTime.now();
       final from = now.subtract(const Duration(days: 30));
+      
+      // Fetch both attendance and shifts data
       final records = await service.getHistory(from: from, to: now);
+      final shifts = await shiftService.getAvailableShifts();
       
       if (!mounted) return;
       
       // Check if today's attendance exists in fresh server data
-      final today = DateTime.now();
-      final todayRecords = records.where((r) {
-        final t = r.occurredAt;
-        if (t == null) return false;
-        return t.year == today.year && t.month == today.month && t.day == today.day;
-      }).toList();
-      
-      // Sort to get the latest record for today
-      todayRecords.sort((a, b) {
+      final sortedRecords = List.from(records);
+      sortedRecords.sort((a, b) {
         final tA = a.occurredAt ?? DateTime(2000);
         final tB = b.occurredAt ?? DateTime(2000);
-        return tB.compareTo(tA);
+        final cmp = tB.compareTo(tA);
+        if (cmp != 0) return cmp;
+        return b.id.compareTo(a.id); // secondary: ID desc
       });
       
       setState(() {
         // Update the future with fresh data
         _recentAttendanceFuture = Future.value(records);
-        _shiftsFuture = ref.read(shiftServiceProvider).getAvailableShifts();
+        _shiftsFuture = Future.value(shifts);
         
-        // Now safe to clear local state since we have fresh server data
-        if (todayRecords.isNotEmpty) {
-          final lastRecord = todayRecords.first;
-          _localClockedIn = lastRecord.type == 'clock_in';
-          _localClockInTime = lastRecord.occurredAt;
+        // Sync local state with most recent record
+        // Apply overnight shift logic for proper button state
+        if (sortedRecords.isNotEmpty) {
+          final lastRecord = sortedRecords.first;
+          
+          if (lastRecord.type == 'clock_in') {
+            final clockInDate = lastRecord.occurredAt;
+            
+            if (clockInDate != null) {
+              // Find shift for this record
+              Shift? recordShift;
+              for (final shift in shifts) {
+                if (shift.id == lastRecord.shiftId) {
+                  recordShift = shift;
+                  break;
+                }
+              }
+              
+              // Check if overnight shift
+              bool isOvernight = false;
+              if (recordShift != null) {
+                isOvernight = _isOvernightShift(recordShift);
+              }
+              
+              final today = DateTime(now.year, now.month, now.day);
+              final clockInDay = DateTime(clockInDate.year, clockInDate.month, clockInDate.day);
+              
+              if (isOvernight) {
+                // For overnight shifts, keep clocked in within 24 hours
+                final hoursSinceClockIn = now.difference(clockInDate).inHours;
+                if (hoursSinceClockIn < 24) {
+                  _localClockedIn = true;
+                  _localClockInTime = clockInDate;
+                } else {
+                  _localClockedIn = null;
+                  _localClockInTime = null;
+                }
+              } else {
+                // For non-overnight shifts, only keep clocked in if same day
+                if (clockInDay == today) {
+                  _localClockedIn = true;
+                  _localClockInTime = clockInDate;
+                } else {
+                  _localClockedIn = null;
+                  _localClockInTime = null;
+                }
+              }
+            } else {
+              _localClockedIn = null;
+              _localClockInTime = null;
+            }
+          } else {
+            // Last record is clock_out
+            _localClockedIn = null;
+            _localClockInTime = null;
+          }
         } else {
           _localClockedIn = null;
           _localClockInTime = null;
@@ -283,11 +338,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined,
-                            color: Colors.white),
-                        onPressed: () {
-                          // TODO: Implement notifications
+                      FutureBuilder<int>(
+                        future: ref.read(notificationServiceProvider).getUnreadCount(),
+                        builder: (context, snapshot) {
+                          final unreadCount = snapshot.data ?? 0;
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications_outlined,
+                                    color: Colors.white),
+                                onPressed: () {
+                                  Navigator.of(context)
+                                      .pushNamed(AppRoutes.notifications)
+                                      .then((_) {
+                                    // Refresh badge count after returning
+                                    setState(() {});
+                                  });
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 18,
+                                      minHeight: 18,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 99 ? '99+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
                         },
                       ),
                     ],
@@ -416,164 +511,230 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     );
   }
 
+  /// Determines if a shift is an overnight shift (crosses midnight).
+  /// Uses same algorithm as backend: end time in minutes <= start time in minutes.
+  /// e.g., 19:00->07:00 = overnight (7*60=420 <= 19*60=1140) ✓
+  /// e.g., 16:00->12:00 = overnight (12*60=720 <= 16*60=960) ✓
+  /// e.g., 08:00->17:00 = NOT overnight (17*60=1020 > 8*60=480) ✓
+  bool _isOvernightShift(Shift shift) {
+    // Parse HH:mm or HH:mm:ss format
+    final startParts = shift.startTime.split(':');
+    final endParts = shift.endTime.split(':');
+    
+    if (startParts.length < 2 || endParts.length < 2) return false;
+    
+    final startMinutes = (int.tryParse(startParts[0]) ?? 0) * 60 +
+        (int.tryParse(startParts[1]) ?? 0);
+    final endMinutes = (int.tryParse(endParts[0]) ?? 0) * 60 +
+        (int.tryParse(endParts[1]) ?? 0);
+    
+    // Overnight: end time is at or before start time (crosses midnight)
+    return endMinutes <= startMinutes;
+  }
+
   Widget _buildDynamicStatusCard(BuildContext context) {
-    return FutureBuilder<List<AttendanceRecord>>(
-      future: _recentAttendanceFuture,
-      builder: (context, snapshot) {
-        bool isClockedIn = false;
-        DateTime? clockInTime;
+    return FutureBuilder<List<Shift>>(
+      future: _shiftsFuture,
+      builder: (context, shiftsSnapshot) {
+        final shifts = shiftsSnapshot.data ?? [];
+        
+        return FutureBuilder<List<AttendanceRecord>>(
+          future: _recentAttendanceFuture,
+          builder: (context, snapshot) {
+            bool isClockedIn = false;
+            DateTime? clockInTime;
 
-        // First, check local state (for offline support)
-        // Local state takes precedence if set for today
-        if (_localClockedIn != null) {
-          isClockedIn = _localClockedIn!;
-          clockInTime = _localClockInTime;
-        } else if (snapshot.hasData && snapshot.data != null) {
-          // Use server data
-          final records = List<AttendanceRecord>.from(snapshot.data!);
-          // Sort descending
-          records.sort((a, b) {
-            final tA = a.occurredAt ?? DateTime(2000);
-            final tB = b.occurredAt ?? DateTime(2000);
-            return tB.compareTo(tA);
-          });
+            // First, check local state (for offline support)
+            // Local state takes precedence if set for today
+            if (_localClockedIn != null) {
+              isClockedIn = _localClockedIn!;
+              clockInTime = _localClockInTime;
+            } else if (snapshot.hasData && snapshot.data != null) {
+              // Use server data
+              final records = List<AttendanceRecord>.from(snapshot.data!);
+              // Sort descending by occurred_at (most recent first), then by id desc
+              records.sort((a, b) {
+                final tA = a.occurredAt ?? DateTime(2000);
+                final tB = b.occurredAt ?? DateTime(2000);
+                final cmp = tB.compareTo(tA);
+                if (cmp != 0) return cmp;
+                return b.id.compareTo(a.id); // secondary: ID desc
+              });
 
-          // Check today's attendance logic
-          final today = DateTime.now();
-          
-          // Get records for today
-          final todayRecords = records.where((r) {
-            final t = r.occurredAt;
-            if (t == null) return false;
-            return t.year == today.year &&
-                   t.month == today.month &&
-                   t.day == today.day;
-          }).toList();
-
-          if (todayRecords.isNotEmpty) {
-            final lastRecord = todayRecords.first;
-            if (lastRecord.type == 'clock_in') {
-              isClockedIn = true;
-              clockInTime = lastRecord.occurredAt;
+              if (records.isNotEmpty) {
+                // Get the most recent record (already sorted descending)
+                final lastRecord = records.first;
+                
+                if (lastRecord.type == 'clock_in') {
+                  final clockInDate = lastRecord.occurredAt;
+                  
+                  if (clockInDate != null) {
+                    // Find the shift for this attendance record from available shifts
+                    Shift? recordShift;
+                    for (final shift in shifts) {
+                      if (shift.id == lastRecord.shiftId) {
+                        recordShift = shift;
+                        break;
+                      }
+                    }
+                    // Fallback to cached default shift if not found in list
+                    if (recordShift == null && _cachedDefaultShift != null && 
+                        _cachedDefaultShift!.id == lastRecord.shiftId) {
+                      recordShift = _cachedDefaultShift;
+                    }
+                    
+                    // Check if this is an overnight shift
+                    // Overnight: starts at PM (>= 12) and ends at AM (< 12)
+                    // Default to non-overnight if shift not found (safer behavior)
+                    bool isOvernight = false;
+                    if (recordShift != null) {
+                      isOvernight = _isOvernightShift(recordShift);
+                    }
+                    
+                    final now = DateTime.now();
+                    final today = DateTime(now.year, now.month, now.day);
+                    final clockInDay = DateTime(clockInDate.year, clockInDate.month, clockInDate.day);
+                    
+                    if (isOvernight) {
+                      // For overnight shifts, button should stay active across midnight
+                      // Check if clock-in was today or yesterday (within 24 hour window)
+                      final hoursSinceClockIn = now.difference(clockInDate).inHours;
+                      if (hoursSinceClockIn < 24) {
+                        isClockedIn = true;
+                        clockInTime = clockInDate;
+                      }
+                      // If more than 24 hours, treat as missed clock-out
+                    } else {
+                      // For non-overnight shifts, only show clock-out button if clock-in was TODAY
+                      // If clock-in was yesterday (or earlier), treat as missed clock-out (reset button)
+                      if (clockInDay == today) {
+                        isClockedIn = true;
+                        clockInTime = clockInDate;
+                      }
+                    }
+                  }
+                }
+                // If last record is clock_out, isClockedIn remains false
+              }
             }
-          }
-        }
 
-        // Dynamic UI Variables
-        final cardColor = isClockedIn
-            ? const Color(0xFFE8F5E9) // Light Green
-            : const Color(0xFFE3F2FD); // Light Blue
-        final accentColor = isClockedIn ? Colors.green : const Color(0xFF0C6CF2);
-        final title = isClockedIn ? 'SEDANG BERTUGAS' : 'SIAP BERTUGAS';
-        final subtitle = isClockedIn
-            ? 'Anda sudah melakukan absen masuk.'
-            : 'Silakan absen masuk untuk memulai shift.';
-        final icon = isClockedIn ? Icons.shield : Icons.login;
-        final buttonLabel = isClockedIn ? 'ABSEN KELUAR' : 'ABSEN MASUK';
-        final buttonColor = isClockedIn ? Colors.red : const Color(0xFF0C6CF2);
+            // Dynamic UI Variables
+            final cardColor = isClockedIn
+                ? const Color(0xFFE8F5E9) // Light Green
+                : const Color(0xFFE3F2FD); // Light Blue
+            final accentColor = isClockedIn ? Colors.green : const Color(0xFF0C6CF2);
+            final title = isClockedIn ? 'SEDANG BERTUGAS' : 'SIAP BERTUGAS';
+            final subtitle = isClockedIn
+                ? 'Anda sudah melakukan absen masuk.'
+                : 'Silakan absen masuk untuk memulai shift.';
+            final icon = isClockedIn ? Icons.shield : Icons.login;
+            final buttonLabel = isClockedIn ? 'ABSEN KELUAR' : 'ABSEN MASUK';
+            final buttonColor = isClockedIn ? Colors.red : const Color(0xFF0C6CF2);
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: accentColor, size: 24),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(
-                            color: accentColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              if (isClockedIn && clockInTime != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      const Icon(Icons.access_time,
-                          size: 16, color: Colors.green),
-                      const SizedBox(width: 8),
-                      Text(
-                        // Removed TimezoneHelper.toJakarta call
-                        'Masuk pukul ${_timeFormat.format(clockInTime!)}',
-                        style: TextStyle(
-                          color: Colors.green.shade800,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(icon, color: accentColor, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                color: accentColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              subtitle,
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () => _startAttendanceFlow(!isClockedIn),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: buttonColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 20),
+                  if (isClockedIn && clockInTime != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time,
+                              size: 16, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text(
+                            // Removed TimezoneHelper.toJakarta call
+                            'Masuk pukul ${_timeFormat.format(clockInTime!)}',
+                            style: TextStyle(
+                              color: Colors.green.shade800,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () => _startAttendanceFlow(!isClockedIn),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: buttonColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        buttonLabel,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
                     ),
                   ),
-                  child: Text(
-                    buttonLabel,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -952,6 +1113,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 Navigator.of(context).pushNamed(AppRoutes.payrollList);
               },
             ),
+            // Admin Approval Menu - only for admin roles
+            if (user?.role == 'ADMIN' || 
+                user?.role == 'SUPERADMIN' || 
+                user?.role == 'PROJECT_ADMIN') ...[
+              ListTile(
+                leading: const Icon(Icons.approval, color: Colors.deepPurple),
+                title: const Text('Persetujuan Cuti'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pushNamed(AppRoutes.adminLeaveApprovals);
+                },
+              ),
+            ],
             const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
@@ -1218,18 +1392,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   Row(
                     children: [
                       Expanded(
-                        child: ChoiceChip(
-                          label: const Center(child: Text('WFO')),
-                          selected: selectedMode == 'normal',
-                          onSelected: isWithinRange
-                              ? (selected) {
-                                  if (!selected) return;
-                                  setSheetState(() {
-                                    selectedMode = 'normal';
-                                    _mode = 'normal';
-                                  });
-                                }
-                              : null, // Disabled if outside range
+                        child: IgnorePointer(
+                          ignoring: !isWithinRange,
+                          child: Opacity(
+                            opacity: isWithinRange ? 1.0 : 0.5,
+                            child: ChoiceChip(
+                              label: const Center(child: Text('WFO')),
+                              selected: selectedMode == 'normal',
+                              onSelected: isWithinRange
+                                  ? (selected) {
+                                      if (!selected) return;
+                                      setSheetState(() {
+                                        selectedMode = 'normal';
+                                        _mode = 'normal';
+                                      });
+                                    }
+                                  : null, // Disabled if outside range
+                              backgroundColor: isWithinRange ? null : Colors.grey.shade200,
+                              disabledColor: Colors.grey.shade200,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1248,6 +1430,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                       ),
                     ],
                   ),
+                  if (!isWithinRange)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '* WFO hanya tersedia saat berada di area kantor',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange.shade700,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 20),
 
                   // Note Field

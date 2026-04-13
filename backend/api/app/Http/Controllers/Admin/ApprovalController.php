@@ -20,8 +20,9 @@ class ApprovalController extends Controller
             ->where('status_dinas', AttendanceLog::STATUS_DINAS_PENDING)
             ->orderBy('occurred_at', 'desc');
 
-        if ($user->isProjectAdmin() && $user->active_project_id) {
-            $query->where('project_id', $user->active_project_id);
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
+            $query->whereIn('project_id', $accessibleProjectIds);
         }
 
         $logs = $query->paginate(30);
@@ -46,21 +47,27 @@ class ApprovalController extends Controller
     public function leave(Request $request): View
     {
         $user = $request->user();
+        $status = $request->get('status', 'pending'); // Default to pending
         
-        $query = LeaveRequest::with('user')
-            ->where('status', LeaveRequest::STATUS_PENDING)
+        $query = LeaveRequest::with(['user', 'approvedBy', 'leaveType'])
             ->orderBy('created_at', 'desc');
 
-        // Filter by project admin's active project
-        if ($user->isProjectAdmin() && $user->active_project_id) {
-            $query->whereHas('user', function ($q) use ($user) {
-                $q->where('active_project_id', $user->active_project_id);
+        // Filter by status
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+
+        // Filter by accessible projects
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
+            $query->whereHas('user', function ($q) use ($accessibleProjectIds) {
+                $q->whereIn('active_project_id', $accessibleProjectIds);
             });
         }
 
-        $requests = $query->paginate(30);
+        $requests = $query->paginate(30)->appends(['status' => $status]);
 
-        return view('admin.approvals.leave', compact('requests'));
+        return view('admin.approvals.leave', compact('requests', 'status'));
     }
 
     public function approveLeave(LeaveRequest $leaveRequest): RedirectResponse

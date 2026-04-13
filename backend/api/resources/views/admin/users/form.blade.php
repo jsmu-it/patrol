@@ -45,6 +45,18 @@
         </div>
     </div>
     <div>
+        <label class="block text-gray-600 mb-1">Atasan Langsung</label>
+        <select name="supervisor_id" class="w-full border border-gray-300 rounded px-2 py-1.5">
+            <option value="">- Tidak ada -</option>
+            @foreach($supervisors ?? [] as $supervisor)
+                <option value="{{ $supervisor->id }}" @selected((string)old('supervisor_id', $user->supervisor_id ?? '') === (string)$supervisor->id)>
+                    {{ $supervisor->name }} ({{ $supervisor->role }})
+                </option>
+            @endforeach
+        </select>
+        <p class="text-gray-400 text-[10px] mt-1">Atasan yang akan menerima notifikasi pengajuan cuti</p>
+    </div>
+    <div>
         <label class="block text-gray-600 mb-1">Foto Profil</label>
         <input type="file" name="profile_photo" accept="image/*" class="w-full text-xs">
         @if($isEdit && $profile && $profile->profile_photo_path)

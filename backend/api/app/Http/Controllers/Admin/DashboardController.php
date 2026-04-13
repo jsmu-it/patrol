@@ -8,6 +8,7 @@ use App\Models\Checkpoint;
 use App\Models\PatrolLog;
 use App\Models\Project;
 use App\Models\User;
+use App\Reports\AttendanceReportBuilder;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -29,8 +30,19 @@ class DashboardController extends Controller
             ->whereNotNull('latitude')
             ->whereNotNull('longitude');
 
-        // Filter if Project Admin
-        if ($user->isProjectAdmin() && $user->active_project_id) {
+        // Get accessible project IDs for current user
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        
+        // Filter if user has limited project access
+        if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
+            $guardsQuery->whereIn('active_project_id', $accessibleProjectIds);
+            $projectsQuery->whereIn('id', $accessibleProjectIds);
+            $attendanceQuery->whereIn('project_id', $accessibleProjectIds);
+            $patrolQuery->whereIn('project_id', $accessibleProjectIds);
+            $checkpointsQuery->whereIn('project_id', $accessibleProjectIds);
+        } 
+        // Fallback: Filter if Project Admin (legacy support)
+        elseif ($user->isProjectAdmin() && $user->active_project_id) {
             $guardsQuery->where('active_project_id', $user->active_project_id);
             $projectsQuery->where('id', $user->active_project_id);
             $attendanceQuery->where('project_id', $user->active_project_id);
@@ -88,7 +100,10 @@ class DashboardController extends Controller
 
     private function getAnalyticsData($user): array
     {
-        $projectFilter = $user->isProjectAdmin() && $user->active_project_id ? $user->active_project_id : null;
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        
+        // Determine filter: accessible project IDs or null (all projects for SUPERADMIN)
+        $projectFilter = $user->isSuperAdmin() ? null : $accessibleProjectIds;
 
         // Attendance data for last 30 days
         $attendanceByDay = $this->getAttendanceByDay($projectFilter);
@@ -102,15 +117,61 @@ class DashboardController extends Controller
         // Patrol by type
         $patrolByType = $this->getPatrolByType($projectFilter);
 
+        // Employee performance
+        $performance = $this->getAveragePerformance($projectFilter);
+
         return [
             'attendanceByDay' => $attendanceByDay,
             'patrolStats' => $patrolStats,
             'attendanceByProject' => $attendanceByProject,
             'patrolByType' => $patrolByType,
+            'performance' => $performance,
         ];
     }
 
-    private function getAttendanceByDay(?int $projectId): array
+    private function getAveragePerformance($projectFilter): array
+    {
+        $startDate = CarbonImmutable::now()->startOfMonth();
+        $endDate = CarbonImmutable::now()->endOfDay();
+        $totalDays = $startDate->diffInDays($endDate) + 1;
+
+        $guardsQuery = User::where('role', User::ROLE_GUARD);
+        if ($projectFilter !== null) {
+            $guardsQuery->whereIn('active_project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]);
+        }
+        $guards = $guardsQuery->get();
+
+        if ($guards->isEmpty()) {
+            return ['average' => 0, 'count' => 0];
+        }
+
+        $builder = new AttendanceReportBuilder();
+        $totalPercentage = 0;
+
+        foreach ($guards as $guard) {
+            $filters = [
+                'from' => $startDate,
+                'to' => $endDate,
+                'project_id' => null,
+                'user_id' => $guard->id,
+            ];
+            
+            $sessions = $builder->buildCollection($filters);
+            
+            $presentDays = $sessions->filter(function($session) {
+                return $session['clock_in_time'] !== '-' || str_contains($session['status'] ?? '', 'Cuti');
+            })->count();
+
+            $totalPercentage += ($totalDays > 0 ? ($presentDays / $totalDays) * 100 : 0);
+        }
+
+        return [
+            'average' => round($totalPercentage / $guards->count(), 1),
+            'count' => $guards->count()
+        ];
+    }
+
+    private function getAttendanceByDay($projectFilter): array
     {
         $startDate = Carbon::now()->subDays(29)->startOfDay();
         $endDate = Carbon::now()->endOfDay();
@@ -124,8 +185,8 @@ class DashboardController extends Controller
             ->groupBy(DB::raw('DATE(occurred_at)'))
             ->orderBy('date');
 
-        if ($projectId) {
-            $query->where('project_id', $projectId);
+        if ($projectFilter !== null) {
+            $query->whereIn('project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]);
         }
 
         $data = $query->get()->keyBy('date');
@@ -145,7 +206,7 @@ class DashboardController extends Controller
         return $result;
     }
 
-    private function getPatrolStats(?int $projectId): array
+    private function getPatrolStats($projectFilter): array
     {
         $thisMonth = Carbon::now()->startOfMonth();
         $lastMonth = Carbon::now()->subMonth()->startOfMonth();
@@ -154,9 +215,10 @@ class DashboardController extends Controller
         $thisMonthQuery = PatrolLog::where('occurred_at', '>=', $thisMonth);
         $lastMonthQuery = PatrolLog::whereBetween('occurred_at', [$lastMonth, $lastMonthEnd]);
 
-        if ($projectId) {
-            $thisMonthQuery->where('project_id', $projectId);
-            $lastMonthQuery->where('project_id', $projectId);
+        if ($projectFilter !== null) {
+            $projectIds = is_array($projectFilter) ? $projectFilter : [$projectFilter];
+            $thisMonthQuery->whereIn('project_id', $projectIds);
+            $lastMonthQuery->whereIn('project_id', $projectIds);
         }
 
         $thisMonthCount = $thisMonthQuery->count();
@@ -169,11 +231,11 @@ class DashboardController extends Controller
         // Count checkpoints visited this month
         $checkpointsVisited = PatrolLog::where('occurred_at', '>=', $thisMonth)
             ->whereNotNull('checkpoint_id')
-            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($projectFilter !== null, fn($q) => $q->whereIn('project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]))
             ->distinct('checkpoint_id')
             ->count('checkpoint_id');
 
-        $totalCheckpoints = Checkpoint::when($projectId, fn($q) => $q->where('project_id', $projectId))->count();
+        $totalCheckpoints = Checkpoint::when($projectFilter !== null, fn($q) => $q->whereIn('project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]))->count();
 
         return [
             'thisMonth' => $thisMonthCount,
@@ -185,7 +247,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getAttendanceByProject(?int $projectId): array
+    private function getAttendanceByProject($projectFilter): array
     {
         $startDate = Carbon::now()->startOfMonth();
 
@@ -195,8 +257,8 @@ class DashboardController extends Controller
             ->orderByDesc('count')
             ->limit(5);
 
-        if ($projectId) {
-            $query->where('project_id', $projectId);
+        if ($projectFilter !== null) {
+            $query->whereIn('project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]);
         }
 
         $data = $query->with('project:id,name')->get();
@@ -207,7 +269,7 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getPatrolByType(?int $projectId): array
+    private function getPatrolByType($projectFilter): array
     {
         $startDate = Carbon::now()->startOfMonth();
 
@@ -215,8 +277,8 @@ class DashboardController extends Controller
             ->where('occurred_at', '>=', $startDate)
             ->groupBy('type');
 
-        if ($projectId) {
-            $query->where('project_id', $projectId);
+        if ($projectFilter !== null) {
+            $query->whereIn('project_id', is_array($projectFilter) ? $projectFilter : [$projectFilter]);
         }
 
         $data = $query->get()->keyBy('type');

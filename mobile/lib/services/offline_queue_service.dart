@@ -6,7 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api_client.dart';
-import 'secure_storage_service.dart';
+import 'local_storage_service.dart';
 
 const _offlineQueueKey = 'offline_queue';
 
@@ -32,7 +32,7 @@ class SyncEvent {
 class OfflineQueueService {
   OfflineQueueService(this._storage, this._apiClient);
 
-  final SecureStorageService _storage;
+  final LocalStorageService _storage;
   final ApiClient _apiClient;
 
   bool _syncing = false;
@@ -45,7 +45,7 @@ class OfflineQueueService {
   }
 
   Future<List<Map<String, dynamic>>> _loadQueue() async {
-    final raw = await _storage.readRaw(_offlineQueueKey);
+    final raw = await _storage.getString(_offlineQueueKey);
     if (raw == null || raw.isEmpty) {
       return [];
     }
@@ -63,7 +63,7 @@ class OfflineQueueService {
 
   Future<void> _saveQueue(List<Map<String, dynamic>> queue) async {
     final raw = jsonEncode(queue);
-    await _storage.writeRaw(_offlineQueueKey, raw);
+    await _storage.setString(_offlineQueueKey, raw);
   }
 
   Future<void> _addItem(Map<String, dynamic> item) async {
@@ -202,6 +202,7 @@ class OfflineQueueService {
     required String dateTo,
     required String reason,
     String? doctorNote,
+    int? leaveTypeId, // BUG FIX: added so leave type is preserved offline
   }) async {
     final id = '${OfflineQueueItemType.leaveRequest}-${DateTime.now().millisecondsSinceEpoch}';
     await _addItem({
@@ -213,6 +214,7 @@ class OfflineQueueService {
         'date_to': dateTo,
         'reason': reason,
         'doctor_note': doctorNote,
+        if (leaveTypeId != null) 'leave_type_id': leaveTypeId,
       },
     });
   }
@@ -294,9 +296,23 @@ class OfflineQueueService {
           processedIds.add(id);
         } on ApiException catch (e) {
           print('[Queue] Attendance sync error: $id - ${e.message} (${e.statusCode})');
-          if (isOfflineError(e)) break;
+          if (isOfflineError(e)) {
+            // No network — stop processing, retry later
+            break;
+          }
+          if (e.statusCode == 401) {
+            // Unauthorized — stop, user needs to login again
+            break;
+          }
+          // For 4xx permanent errors (e.g. 422 validation, 404 shift not found),
+          // discard the item so it doesn't block the queue forever.
+          // This happens when e.g. selfie temp file is gone after a long delay.
+          print('[Queue] Permanent error (${ e.statusCode}), discarding stuck item: $id');
+          processedIds.add(id); // Remove from queue
         } catch (e) {
           print('[Queue] Attendance sync unknown error: $id - $e');
+          // Unknown error – skip this item and continue with the rest
+          // Do NOT add to processedIds, so it will be retried next sync
         }
       }
 
@@ -442,7 +458,7 @@ class OfflineQueueService {
 }
 
 final offlineQueueServiceProvider = Provider<OfflineQueueService>((ref) {
-  final storage = ref.watch(secureStorageServiceProvider);
+  final storage = ref.watch(localStorageServiceProvider);
   final apiClient = ref.watch(apiClientProvider);
   return OfflineQueueService(storage, apiClient);
 });

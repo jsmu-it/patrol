@@ -28,9 +28,14 @@
                     <option value="{{ $unit }}" @selected(request('unit') == $unit)>{{ $unit }}</option>
                 @endforeach
             </select>
+            <select name="status" class="border rounded px-3 py-2 text-sm">
+                <option value="">-- Semua Status --</option>
+                <option value="linked" @selected(request('status') == 'linked')>Terdaftar</option>
+                <option value="unlinked" @selected(request('status') == 'unlinked')>Tidak Ditemukan</option>
+            </select>
             <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari nama/NIP..." class="border rounded px-3 py-2 text-sm w-48">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-900 text-sm">Filter</button>
-            @if(request()->hasAny(['period', 'unit', 'search']))
+            @if(request()->hasAny(['period', 'unit', 'status', 'search']))
                 <a href="{{ route('admin.payroll.index') }}" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 text-sm">Reset</a>
             @endif
         </form>
@@ -48,29 +53,26 @@
     </div>
     @endif
 
-    <form id="bulk-form" method="POST" action="{{ route('admin.payroll.print-bulk') }}" target="_blank">
-        @csrf
-        
-        {{-- Hidden inputs for all IDs (used by Select All Data) --}}
-        <div id="all-ids-container" style="display:none;">
-            @foreach($allIds as $id)
-                <input type="checkbox" name="ids[]" value="{{ $id }}" class="all-id-checkbox">
-            @endforeach
-        </div>
-        
-        @if(count($allIds) > 0)
-        <div class="px-4 py-2 bg-blue-50 border-b flex items-center gap-4">
-            <span class="text-sm text-blue-800">Total: <strong>{{ count($allIds) }}</strong> slip gaji</span>
-            <button type="button" id="select-all-data" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                Pilih Semua Data ({{ count($allIds) }})
-            </button>
-            <button type="button" id="deselect-all" class="text-sm text-gray-600 hover:text-gray-800 font-medium" style="display:none;">
-                Batalkan Pilihan
-            </button>
-        </div>
-        @endif
-        
-        <div class="overflow-x-auto">
+    {{-- Hidden inputs for all IDs (used by Select All Data) --}}
+    <div id="all-ids-container" style="display:none;">
+        @foreach($allIds as $id)
+            <input type="checkbox" name="ids[]" value="{{ $id }}" class="all-id-checkbox">
+        @endforeach
+    </div>
+    
+    @if(count($allIds) > 0)
+    <div class="px-4 py-2 bg-blue-50 border-b flex items-center gap-4">
+        <span class="text-sm text-blue-800">Total: <strong>{{ count($allIds) }}</strong> slip gaji</span>
+        <button type="button" id="select-all-data" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+            Pilih Semua Data ({{ count($allIds) }})
+        </button>
+        <button type="button" id="deselect-all" class="text-sm text-gray-600 hover:text-gray-800 font-medium" style="display:none;">
+            Batalkan Pilihan
+        </button>
+    </div>
+    @endif
+    
+    <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50">
                     <tr>
@@ -82,6 +84,7 @@
                         <th class="px-4 py-3 text-left">Unit / Site</th>
                         <th class="px-4 py-3 text-left">Jabatan</th>
                         <th class="px-4 py-3 text-left">Periode</th>
+                        <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-right">Pendapatan</th>
                         <th class="px-4 py-3 text-right">Potongan</th>
                         <th class="px-4 py-3 text-right">Diterima</th>
@@ -99,6 +102,13 @@
                         <td class="px-4 py-3">{{ $slip->unit ?? '-' }}</td>
                         <td class="px-4 py-3">{{ $slip->position ?? '-' }}</td>
                         <td class="px-4 py-3">{{ $slip->period_month }}</td>
+                        <td class="px-4 py-3 text-center">
+                            @if($slip->user_id)
+                                <span class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-[10px] font-semibold uppercase">Terdaftar</span>
+                            @else
+                                <span class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-[10px] font-semibold uppercase">Tidak Ditemukan</span>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-right font-mono">{{ number_format($slip->total_income, 0, ',', '.') }}</td>
                         <td class="px-4 py-3 text-right font-mono text-red-600">{{ number_format($slip->total_deduction, 0, ',', '.') }}</td>
                         <td class="px-4 py-3 text-right font-mono font-semibold text-blue-600">{{ number_format($slip->net_income, 0, ',', '.') }}</td>
@@ -128,7 +138,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="11" class="px-4 py-8 text-center text-gray-500">
                             Belum ada data slip gaji. <a href="{{ route('admin.payroll.import.form') }}" class="text-blue-600 hover:underline">Upload Excel</a> untuk menambahkan.
                         </td>
                     </tr>
@@ -137,22 +147,21 @@
             </table>
         </div>
 
-        @if($slips->count() > 0)
-        <div class="px-4 py-3 border-t flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <button type="button" onclick="printSelected()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm disabled:opacity-50" id="btn-print-bulk" disabled>
-                    Print Terpilih (<span id="selected-count">0</span>)
-                </button>
-                <button type="button" onclick="sendSelected()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50" id="btn-send-bulk" disabled>
-                    Kirim Terpilih (<span id="selected-count-send">0</span>)
-                </button>
-            </div>
-            <div>
-                {{ $slips->links() }}
-            </div>
+    @if($slips->count() > 0)
+    <div class="px-4 py-3 border-t flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="printSelected()" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm disabled:opacity-50" id="btn-print-bulk" disabled>
+                Print Terpilih (<span id="selected-count">0</span>)
+            </button>
+            <button type="button" onclick="sendSelected()" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm disabled:opacity-50" id="btn-send-bulk" disabled>
+                Kirim Terpilih (<span id="selected-count-send">0</span>)
+            </button>
         </div>
-        @endif
-    </form>
+        <div>
+            {{ $slips->links() }}
+        </div>
+    </div>
+    @endif
 </div>
 
 @push('scripts')

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class BroadcastNotification extends Model
 {
@@ -11,6 +12,7 @@ class BroadcastNotification extends Model
         'sent_by',
         'title',
         'message',
+        'image',
         'target',
         'target_project_id',
         'target_role',
@@ -26,6 +28,16 @@ class BroadcastNotification extends Model
         'failed_count' => 'integer',
         'sent_at' => 'datetime',
     ];
+
+    protected $appends = ['image_url'];
+
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image) {
+            return null;
+        }
+        return Storage::disk('public')->url($this->image);
+    }
 
     public function sender(): BelongsTo
     {

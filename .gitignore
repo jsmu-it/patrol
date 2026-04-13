@@ -1,4 +1,5 @@
 /backend/api/storage/secrets/*.json
+/backend/api/storage/firebase-service-account.json
 .env
 .DS_Store
 /vendor

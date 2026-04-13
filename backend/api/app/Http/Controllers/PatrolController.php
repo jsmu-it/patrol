@@ -129,7 +129,7 @@ class PatrolController extends Controller
             $this->notifications->notifyAdmins($title, $body, [
                 'type' => $type,
                 'patrol_log_id' => $log->id,
-            ]);
+            ], $log->project_id);
         }
 
         return response()->json(new PatrolLogResource($log), 201);

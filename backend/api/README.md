@@ -1,3 +1,44 @@
+# JSMU Guard - Sistem Manajemen Keamanan Terpadu
+
+## 🌐 Link Publik
+
+### Website Company Profile
+| Halaman | URL |
+|---------|-----|
+| 🏠 Homepage | https://guard.jsmu.co.id |
+| ℹ️ About Us | https://guard.jsmu.co.id/about |
+| 🛡️ Layanan | https://guard.jsmu.co.id/services |
+| 💼 Karir | https://guard.jsmu.co.id/career |
+| 📞 Kontak | https://guard.jsmu.co.id/contact |
+| ❓ FAQ | https://guard.jsmu.co.id/faq |
+
+### Admin Dashboard
+| Halaman | URL |
+|---------|-----|
+| 🔐 Login Admin | https://guard.jsmu.co.id/admin/login |
+| 📊 Dashboard | https://guard.jsmu.co.id/admin |
+
+### Form Publik
+| Halaman | URL |
+|---------|-----|
+| 📝 Form Lamaran Kerja | https://guard.jsmu.co.id/career (klik "Lamar Sekarang") |
+| 📋 Form PDP (Personal Data) | https://guard.jsmu.co.id/pdp |
+
+### Materi Presentasi
+| Materi | URL | Keterangan |
+|--------|-----|------------|
+| 🎯 Presentasi Tender | https://guard.jsmu.co.id/presentasi-jsmu-guard.html | Untuk tender/pitching ke klien |
+| 📱 Panduan Penggunaan App | https://guard.jsmu.co.id/panduan-penggunaan-jsmu-guard.html | Untuk sosialisasi karyawan |
+
+### Aplikasi Mobile
+| Platform | Status |
+|----------|--------|
+| 📱 Android | Tersedia di Play Store (JSMU Guard) |
+| 🍎 iOS | Coming Soon |
+| 🌐 PWA Web App | https://guard.jsmu.co.id/app (untuk iOS/browser) |
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
@@ -6,6 +47,7 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
+
 
 ## About Laravel
 

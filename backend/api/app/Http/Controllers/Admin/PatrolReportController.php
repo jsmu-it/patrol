@@ -23,9 +23,12 @@ class PatrolReportController extends Controller
         $projectsQuery = Project::orderBy('name');
         $guardsQuery = User::where('role', User::ROLE_GUARD)->orderBy('name');
 
-        if ($user->isProjectAdmin() && $user->active_project_id) {
-            $projectsQuery->where('id', $user->active_project_id);
-            $guardsQuery->where('active_project_id', $user->active_project_id);
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        $hasLimitedAccess = $user->isSuperAdmin() ? false : !empty($accessibleProjectIds);
+
+        if ($hasLimitedAccess) {
+            $projectsQuery->whereIn('id', $accessibleProjectIds);
+            $guardsQuery->whereIn('active_project_id', $accessibleProjectIds);
         }
 
         $projects = $projectsQuery->get();
@@ -94,8 +97,11 @@ class PatrolReportController extends Controller
         $user = $request->user();
 
         $projectId = $data['project_id'] ?? null;
-        if ($user->isProjectAdmin() && $user->active_project_id) {
-            $projectId = $user->active_project_id;
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
+            if ($projectId && !in_array($projectId, $accessibleProjectIds)) {
+                $projectId = null;
+            }
         }
 
         return [

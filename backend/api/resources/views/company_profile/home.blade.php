@@ -5,7 +5,7 @@
 <!-- Hero Slider Section -->
 <div x-data="{ activeSlide: 0, slides: {{ $heroSlides->count() }}, interval: null }" 
      x-init="interval = setInterval(() => { activeSlide = (activeSlide + 1) % slides }, 5000)"
-     class="relative bg-gray-900 h-[600px] overflow-hidden group">
+     class="relative bg-gray-900 overflow-hidden group" style="height: 600px;">
     
     @if($heroSlides->count() > 0)
         <!-- Slides -->

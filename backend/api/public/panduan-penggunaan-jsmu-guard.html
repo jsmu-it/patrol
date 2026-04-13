@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Penggunaan Aplikasi JSMU Guard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --primary: #0C6CF2;
+            --secondary: #1e293b;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #334155;
+            --text-light: #64748b;
+            --bg: #f8fafc;
+            --white: #fff
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7
+        }
+
+        .slide {
+            min-height: 100vh;
+            padding: 50px 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative
+        }
+
+        .slide-blue {
+            background: linear-gradient(135deg, #0C6CF2 0%, #0ea5e9 100%);
+            color: white
+        }
+
+        .slide-dark {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            color: white
+        }
+
+        .slide-light {
+            background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%)
+        }
+
+        .slide-green {
+            background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+            color: white
+        }
+
+        .download-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(12, 108, 242, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .download-btn:hover {
+            background: #0a5acc
+        }
+
+        .logo-img {
+            height: 70px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 24px
+        }
+
+        .main-title {
+            font-size: 52px;
+            font-weight: 800;
+            margin-bottom: 16px
+        }
+
+        .section-title {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: var(--secondary)
+        }
+
+        .section-title-white {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: white
+        }
+
+        .subtitle {
+            font-size: 22px;
+            opacity: 0.9;
+            max-width: 700px;
+            margin-bottom: 40px
+        }
+
+        .section-num {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            text-transform: uppercase
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px
+        }
+
+        /* Phone Mockup */
+        .phone-mockup {
+            width: 280px;
+            height: 560px;
+            background: #1e293b;
+            border-radius: 40px;
+            padding: 12px;
+            margin: 0 auto;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3)
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 32px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column
+        }
+
+        .phone-header {
+            background: var(--primary);
+            color: white;
+            padding: 40px 20px 20px;
+            text-align: center
+        }
+
+        .phone-content {
+            flex: 1;
+            padding: 20px;
+            background: #f8fafc
+        }
+
+        .phone-btn {
+            background: var(--primary);
+            color: white;
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            margin-top: 16px
+        }
+
+        .phone-btn-success {
+            background: var(--success)
+        }
+
+        .phone-btn-danger {
+            background: var(--danger)
+        }
+
+        /* Step Cards */
+        .step-card {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid var(--primary)
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 12px
+        }
+
+        .step-desc {
+            font-size: 15px;
+            color: var(--text-light);
+            line-height: 1.7
+        }
+
+        /* Feature Box */
+        .feature-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 28px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2)
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 16px
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            opacity: 0.8
+        }
+
+        /* Tips Box */
+        .tips-box {
+            background: #fef3c7;
+            border-left: 5px solid #f59e0b;
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 20px 0
+        }
+
+        .tips-box h4 {
+            color: #92400e;
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .tips-box p {
+            color: #78350f;
+            font-size: 14px
+        }
+
+        /* Warning Box */
+        .warning-box {
+            background: #fef2f2;
+            border-left: 5px solid #ef4444;
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 20px 0
+        }
+
+        .warning-box h4 {
+            color: #991b1b;
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .warning-box p {
+            color: #991b1b;
+            font-size: 14px
+        }
+
+        /* Success Box */
+        .success-box {
+            background: #dcfce7;
+            border-left: 5px solid #10b981;
+            border-radius: 0 12px 12px 0;
+            padding: 20px 24px;
+            margin: 20px 0
+        }
+
+        .success-box h4 {
+            color: #166534;
+            font-size: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .success-box p {
+            color: #166534;
+            font-size: 14px
+        }
+
+        /* Info List */
+        .info-list {
+            list-style: none
+        }
+
+        .info-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid #e2e8f0
+        }
+
+        .info-list li:last-child {
+            border-bottom: none
+        }
+
+        .list-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            color: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0
+        }
+
+        /* Highlight */
+        .highlight {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 20px;
+            margin: 30px 0
+        }
+
+        .page-num {
+            position: absolute;
+            bottom: 24px;
+            right: 70px;
+            font-size: 12px;
+            color: var(--text-light)
+        }
+
+        .page-num-white {
+            color: rgba(255, 255, 255, 0.5)
+        }
+
+        .divider {
+            width: 60px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 2px;
+            margin: 16px 0 28px
+        }
+
+        /* Flow Steps */
+        .flow-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin: 30px 0
+        }
+
+        .flow-step {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            min-width: 120px
+        }
+
+        .flow-arrow {
+            font-size: 24px;
+            color: var(--primary)
+        }
+
+        /* Big Number */
+        .big-num {
+            font-size: 120px;
+            font-weight: 900;
+            opacity: 0.1;
+            position: absolute;
+            top: 20px;
+            right: 80px
+        }
+
+        /* Print Styles */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important
+            }
+
+            body {
+                background: white !important
+            }
+
+            .slide {
+                page-break-after: always;
+                page-break-inside: avoid;
+                min-height: 100vh;
+                height: 100vh;
+                padding: 40px 50px !important;
+                overflow: hidden !important
+            }
+
+            .slide:last-child {
+                page-break-after: auto
+            }
+
+            .download-btn {
+                display: none !important
+            }
+
+            .main-title {
+                font-size: 42px !important
+            }
+
+            .section-title,
+            .section-title-white {
+                font-size: 32px !important
+            }
+
+            .phone-mockup {
+                width: 220px !important;
+                height: 440px !important
+            }
+
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition: none !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="download-btn" onclick="window.print()">📥 Download PDF</button>
+
+    <!-- Slide 1: Title -->
+    <div class="slide slide-blue" style="text-align:center">
+        <img src="/images/admin-logo.png" alt="JSMU Guard" class="logo-img">
+        <h1 class="main-title">Panduan Penggunaan<br>Aplikasi JSMU Guard</h1>
+        <p class="subtitle">Sosialisasi untuk Seluruh Karyawan</p>
+        <div style="display:flex;gap:20px;justify-content:center;margin-top:40px">
+            <div class="feature-box">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Mudah Digunakan</div>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">Cepat & Praktis</div>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">✅</div>
+                <div class="feature-title">Akurat & Aman</div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">1</div>
+    </div>
+
+    <!-- Slide 2: Apa itu JSMU Guard -->
+    <div class="slide slide-light">
+        <p class="section-num">📱 Pengenalan</p>
+        <h2 class="section-title">Apa itu Aplikasi JSMU Guard?</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <p style="font-size:18px;color:var(--text);margin-bottom:24px">Aplikasi JSMU Guard adalah aplikasi resmi
+                    perusahaan untuk:</p>
+                <ul class="info-list">
+                    <li><span class="list-icon">🕐</span>
+                        <div><strong>Absensi</strong>
+                            <p style="color:var(--text-light)">Clock-in dan clock-out dengan GPS dan foto selfie</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">🚶</span>
+                        <div><strong>Patroli</strong>
+                            <p style="color:var(--text-light)">Scan checkpoint menggunakan QR Code</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">📅</span>
+                        <div><strong>Pengajuan Cuti</strong>
+                            <p style="color:var(--text-light)">Ajukan izin/cuti langsung dari HP</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">📊</span>
+                        <div><strong>Riwayat</strong>
+                            <p style="color:var(--text-light)">Lihat rekap absensi dan slip gaji</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div class="phone-mockup">
+                <div class="phone-screen">
+                    <div class="phone-header">
+                        <div style="font-size:12px;opacity:0.8">Selamat Datang</div>
+                        <div style="font-size:24px;font-weight:700;margin-top:8px">JSMU Guard</div>
+                    </div>
+                    <div class="phone-content">
+                        <div style="text-align:center;margin-bottom:20px">
+                            <div style="width:60px;height:60px;background:#e2e8f0;border-radius:50%;margin:0 auto 12px">
+                            </div>
+                            <div style="font-weight:600">Nama Karyawan</div>
+                            <div style="font-size:12px;color:var(--text-light)">Satpam - Proyek A</div>
+                        </div>
+                        <div class="phone-btn">ABSEN MASUK</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px">
+                            <div
+                                style="background:#e2e8f0;padding:16px;border-radius:10px;text-align:center;font-size:12px">
+                                🚶 Patroli</div>
+                            <div
+                                style="background:#e2e8f0;padding:16px;border-radius:10px;text-align:center;font-size:12px">
+                                📅 Cuti</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">2</div>
+    </div>
+
+    <!-- Slide 3: Download & Install -->
+    <div class="slide slide-light">
+        <div class="big-num">1</div>
+        <p class="section-num">Langkah 1</p>
+        <h2 class="section-title">Download & Install Aplikasi</h2>
+        <div class="divider"></div>
+        <div class="grid-3">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h3 class="step-title">Buka Play Store</h3>
+                <p class="step-desc">Buka aplikasi Play Store di HP Android Anda</p>
+                <div style="margin-top:16px;font-size:48px;text-align:center">📱</div>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h3 class="step-title">Cari "JSMU Guard"</h3>
+                <p class="step-desc">Ketik "JSMU Guard" di kolom pencarian</p>
+                <div style="margin-top:16px;font-size:48px;text-align:center">🔍</div>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h3 class="step-title">Klik Install</h3>
+                <p class="step-desc">Tekan tombol Install dan tunggu hingga selesai</p>
+                <div style="margin-top:16px;font-size:48px;text-align:center">⬇️</div>
+            </div>
+        </div>
+        <div class="tips-box">
+            <h4>💡 Tips</h4>
+            <p>Pastikan HP Anda terhubung ke WiFi atau memiliki kuota internet yang cukup untuk mendownload aplikasi.
+            </p>
+        </div>
+        <div class="page-num">3</div>
+    </div>
+
+    <!-- Slide 4: Login -->
+    <div class="slide slide-light">
+        <div class="big-num">2</div>
+        <p class="section-num">Langkah 2</p>
+        <h2 class="section-title">Login ke Aplikasi</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <div class="step-card" style="margin-bottom:20px">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Buka Aplikasi JSMU Guard</h3>
+                    <p class="step-desc">Klik ikon aplikasi JSMU Guard di HP Anda</p>
+                </div>
+                <div class="step-card" style="margin-bottom:20px">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Masukkan Username</h3>
+                    <p class="step-desc">Gunakan username yang diberikan oleh HRD/Admin. Biasanya berupa email atau
+                        nomor ID karyawan.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Masukkan Password</h3>
+                    <p class="step-desc">Password default
+                    <h3 class="step-title">guard2025</h3> Segera ganti password setelah
+                    login pertama.</p>
+                </div>
+            </div>
+            <div class="phone-mockup">
+                <div class="phone-screen">
+                    <div class="phone-header" style="padding-bottom:30px">
+                        <div style="font-size:20px;font-weight:700">Login</div>
+                    </div>
+                    <div class="phone-content">
+                        <div style="margin-bottom:20px">
+                            <div style="font-size:12px;color:var(--text-light);margin-bottom:6px">Username / Email</div>
+                            <div style="background:#e2e8f0;padding:14px;border-radius:8px;font-size:14px">
+                                nama@jsmu.co.id</div>
+                        </div>
+                        <div style="margin-bottom:20px">
+                            <div style="font-size:12px;color:var(--text-light);margin-bottom:6px">Password</div>
+                            <div style="background:#e2e8f0;padding:14px;border-radius:8px;font-size:14px">••••••••</div>
+                        </div>
+                        <div class="phone-btn">LOGIN</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">4</div>
+    </div>
+
+    <!-- Slide 5: Absensi Masuk -->
+    <div class="slide slide-blue">
+        <p class="section-num" style="color:rgba(255,255,255,0.7)">Cara Penggunaan</p>
+        <h2 class="section-title-white">Cara Absen Masuk (Clock-In)</h2>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div style="font-size:32px;margin-bottom:8px">📍</div>
+                <div style="font-size:12px;font-weight:600">Nyalakan GPS</div>
+            </div>
+            <div class="flow-arrow" style="color:white">→</div>
+            <div class="flow-step">
+                <div style="font-size:32px;margin-bottom:8px">📱</div>
+                <div style="font-size:12px;font-weight:600">Buka App</div>
+            </div>
+            <div class="flow-arrow" style="color:white">→</div>
+            <div class="flow-step">
+                <div style="font-size:32px;margin-bottom:8px">👆</div>
+                <div style="font-size:12px;font-weight:600">Tekan Absen</div>
+            </div>
+            <div class="flow-arrow" style="color:white">→</div>
+            <div class="flow-step">
+                <div style="font-size:32px;margin-bottom:8px">📸</div>
+                <div style="font-size:12px;font-weight:600">Foto Selfie</div>
+            </div>
+            <div class="flow-arrow" style="color:white">→</div>
+            <div class="flow-step" style="background:#10b981;color:white">
+                <div style="font-size:32px;margin-bottom:8px">✅</div>
+                <div style="font-size:12px;font-weight:600">Berhasil!</div>
+            </div>
+        </div>
+        <div class="grid-3" style="margin-top:40px">
+            <div class="feature-box">
+                <div class="feature-icon">📍</div>
+                <div class="feature-title">Nyalakan GPS</div>
+                <div class="feature-desc">Pastikan lokasi/GPS HP sudah aktif sebelum absen</div>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">🏢</div>
+                <div class="feature-title">Di Lokasi Kerja</div>
+                <div class="feature-desc">Anda harus berada di dalam area lokasi proyek</div>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">📸</div>
+                <div class="feature-title">Foto Wajah</div>
+                <div class="feature-desc">Ambil foto selfie dengan jelas, tidak blur</div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">5</div>
+    </div>
+
+    <!-- Slide 6: Absensi Detail -->
+    <div class="slide slide-light">
+        <p class="section-num">Absensi</p>
+        <h2 class="section-title">Detail Langkah Absen Masuk</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <ul class="info-list">
+                    <li><span class="list-icon">1</span>
+                        <div><strong>Pastikan GPS Aktif</strong>
+                            <p style="color:var(--text-light)">Buka Settings > Location > ON. Atau geser dari atas layar
+                                dan aktifkan ikon GPS.</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">2</span>
+                        <div><strong>Buka Aplikasi JSMU Guard</strong>
+                            <p style="color:var(--text-light)">Anda akan melihat halaman home dengan tombol "ABSEN
+                                MASUK"</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">3</span>
+                        <div><strong>Tekan Tombol "ABSEN MASUK"</strong>
+                            <p style="color:var(--text-light)">Tombol berwarna biru di tengah layar</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">4</span>
+                        <div><strong>Izinkan Akses Kamera</strong>
+                            <p style="color:var(--text-light)">Jika muncul popup izin kamera, tekan "Izinkan"</p>
+                        </div>
+                    </li>
+                    <li><span class="list-icon">5</span>
+                        <div><strong>Ambil Foto Selfie</strong>
+                            <p style="color:var(--text-light)">Arahkan kamera ke wajah Anda dan tekan tombol capture</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <div class="success-box">
+                    <h4>✅ Absen Berhasil Jika:</h4>
+                    <p>Muncul notifikasi "Absen Masuk Berhasil" dan tombol berubah menjadi "ABSEN KELUAR"</p>
+                </div>
+                <div class="warning-box">
+                    <h4>⚠️ Gagal Absen?</h4>
+                    <p><strong>Kemungkinan penyebab:</strong><br>
+                        • GPS belum aktif<br>
+                        • Anda di luar area geofence<br>
+                        • Koneksi internet lemah<br>
+                        • Foto tidak jelas/blur</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">6</div>
+    </div>
+
+    <!-- Slide 7: Absen Keluar -->
+    <div class="slide slide-green">
+        <p class="section-num" style="color:rgba(255,255,255,0.7)">Cara Penggunaan</p>
+        <h2 class="section-title-white">Cara Absen Keluar (Clock-Out)</h2>
+        <div class="grid-2" style="margin-top:40px">
+            <div style="text-align:center">
+                <div class="phone-mockup" style="transform:scale(0.9)">
+                    <div class="phone-screen">
+                        <div class="phone-header" style="background:var(--success)">
+                            <div style="font-size:12px;opacity:0.8">Status</div>
+                            <div style="font-size:18px;font-weight:700;margin-top:4px">SEDANG BERTUGAS</div>
+                        </div>
+                        <div class="phone-content">
+                            <div style="text-align:center;margin-bottom:20px">
+                                <div style="font-size:12px;color:var(--text-light)">Masuk pukul</div>
+                                <div style="font-size:24px;font-weight:700">08:00</div>
+                            </div>
+                            <div class="phone-btn phone-btn-danger">ABSEN KELUAR</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="feature-box" style="text-align:left;margin-bottom:20px">
+                    <h3 style="font-size:20px;margin-bottom:16px">Langkah Absen Keluar:</h3>
+                    <p style="font-size:16px;line-height:2">
+                        1️⃣ Pastikan GPS masih aktif<br>
+                        2️⃣ Buka aplikasi JSMU Guard<br>
+                        3️⃣ Tekan tombol "ABSEN KELUAR" (merah)<br>
+                        4️⃣ Ambil foto selfie<br>
+                        5️⃣ Tunggu konfirmasi berhasil
+                    </p>
+                </div>
+                <div style="background:rgba(255,255,255,0.2);padding:20px;border-radius:12px">
+                    <h4 style="margin-bottom:8px">💡 Penting!</h4>
+                    <p style="opacity:0.9;font-size:14px">Jangan lupa absen keluar saat selesai shift. Jika lupa,
+                        hubungi admin untuk koreksi manual.</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">7</div>
+    </div>
+
+    <!-- Slide 8: Patroli -->
+    <div class="slide slide-light">
+        <div class="big-num">🚶</div>
+        <p class="section-num">Fitur Patroli</p>
+        <h2 class="section-title">Cara Melakukan Patroli</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <div class="step-card" style="margin-bottom:16px">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Buka Menu Patroli</h3>
+                    <p class="step-desc">Dari halaman home, tekan menu "Patroli"</p>
+                </div>
+                <div class="step-card" style="margin-bottom:16px">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Mulai Patroli</h3>
+                    <p class="step-desc">Tekan tombol "Mulai Patroli" untuk memulai sesi</p>
+                </div>
+                <div class="step-card" style="margin-bottom:16px">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Scan QR Checkpoint</h3>
+                    <p class="step-desc">Di setiap titik checkpoint, scan QR code yang tertempel</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <h3 class="step-title">Foto & Catatan (Opsional)</h3>
+                    <p class="step-desc">Tambahkan foto kondisi lokasi jika diperlukan</p>
+                </div>
+            </div>
+            <div>
+                <div style="background:#1e293b;border-radius:20px;padding:32px;color:white;text-align:center">
+                    <div style="font-size:80px;margin-bottom:16px">📷</div>
+                    <h3 style="font-size:24px;margin-bottom:12px">Scan QR Code</h3>
+                    <p style="opacity:0.8;font-size:14px">Arahkan kamera ke QR Code yang ada di setiap checkpoint</p>
+                    <div style="margin-top:24px;padding:16px;background:rgba(255,255,255,0.1);border-radius:12px">
+                        <div style="font-size:12px;opacity:0.6">Checkpoint terdeteksi:</div>
+                        <div style="font-size:18px;font-weight:600;margin-top:4px">Pos Jaga Depan</div>
+                    </div>
+                </div>
+                <div class="tips-box" style="margin-top:20px">
+                    <h4>💡 Tips</h4>
+                    <p>Pastikan QR Code tidak rusak dan cukup cahaya saat scan</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">8</div>
+    </div>
+
+    <!-- Slide 9: Pengajuan Cuti -->
+    <div class="slide slide-dark">
+        <p class="section-num" style="color:#06b6d4">Fitur Cuti</p>
+        <h2 class="section-title-white">Cara Mengajukan Cuti/Izin</h2>
+        <div class="flow-steps">
+            <div class="flow-step">
+                <div style="font-size:28px;margin-bottom:6px">📅</div>
+                <div style="font-size:11px;font-weight:600">Buka Menu Cuti</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div style="font-size:28px;margin-bottom:6px">➕</div>
+                <div style="font-size:11px;font-weight:600">Ajukan Baru</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div style="font-size:28px;margin-bottom:6px">📝</div>
+                <div style="font-size:11px;font-weight:600">Isi Form</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div style="font-size:28px;margin-bottom:6px">📤</div>
+                <div style="font-size:11px;font-weight:600">Kirim</div>
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <div style="font-size:28px;margin-bottom:6px">⏳</div>
+                <div style="font-size:11px;font-weight:600">Tunggu Approval</div>
+            </div>
+        </div>
+        <div class="grid-2" style="margin-top:40px">
+            <div>
+                <h3 style="color:white;font-size:22px;margin-bottom:20px">Yang Perlu Diisi:</h3>
+                <ul class="info-list" style="border-color:rgba(255,255,255,0.1)">
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="list-icon"
+                            style="background:#06b6d4">1</span>
+                        <div><strong style="color:white">Jenis Cuti</strong>
+                            <p style="color:rgba(255,255,255,0.6)">Pilih: Cuti Tahunan, Sakit, Izin, dll</p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="list-icon"
+                            style="background:#06b6d4">2</span>
+                        <div><strong style="color:white">Tanggal</strong>
+                            <p style="color:rgba(255,255,255,0.6)">Pilih tanggal mulai dan selesai cuti</p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="list-icon"
+                            style="background:#06b6d4">3</span>
+                        <div><strong style="color:white">Alasan</strong>
+                            <p style="color:rgba(255,255,255,0.6)">Tulis alasan pengajuan cuti</p>
+                        </div>
+                    </li>
+                    <li style="border-color:rgba(255,255,255,0.1)"><span class="list-icon"
+                            style="background:#06b6d4">4</span>
+                        <div><strong style="color:white">Lampiran (Jika Ada)</strong>
+                            <p style="color:rgba(255,255,255,0.6)">Upload surat dokter untuk cuti sakit</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+            <div>
+                <div style="background:rgba(255,255,255,0.1);border-radius:16px;padding:24px">
+                    <h4 style="color:white;margin-bottom:16px">Status Pengajuan:</h4>
+                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                        <span
+                            style="background:#f59e0b;color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600">PENDING</span>
+                        <span style="color:rgba(255,255,255,0.7);font-size:13px">Menunggu persetujuan atasan</span>
+                    </div>
+                    <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center">
+                        <span
+                            style="background:#10b981;color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600">APPROVED</span>
+                        <span style="color:rgba(255,255,255,0.7);font-size:13px">Cuti disetujui</span>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:center">
+                        <span
+                            style="background:#ef4444;color:white;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600">REJECTED</span>
+                        <span style="color:rgba(255,255,255,0.7);font-size:13px">Cuti ditolak</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">9</div>
+    </div>
+
+    <!-- Slide 10: Riwayat & Slip Gaji -->
+    <div class="slide slide-light">
+        <p class="section-num">Fitur Lainnya</p>
+        <h2 class="section-title">Riwayat Absensi & Slip Gaji</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <h3 style="font-size:22px;margin-bottom:20px;color:var(--secondary)">📊 Melihat Riwayat Absensi</h3>
+                <div class="step-card" style="margin-bottom:16px">
+                    <p class="step-desc"><strong>1.</strong> Buka menu "Riwayat" dari halaman home</p>
+                </div>
+                <div class="step-card" style="margin-bottom:16px">
+                    <p class="step-desc"><strong>2.</strong> Pilih bulan yang ingin dilihat</p>
+                </div>
+                <div class="step-card">
+                    <p class="step-desc"><strong>3.</strong> Lihat detail absensi harian: jam masuk, jam keluar, status
+                    </p>
+                </div>
+            </div>
+            <div>
+                <h3 style="font-size:22px;margin-bottom:20px;color:var(--secondary)">💵 Melihat Slip Gaji</h3>
+                <div class="step-card" style="margin-bottom:16px">
+                    <p class="step-desc"><strong>1.</strong> Buka menu "Slip Gaji" dari halaman home</p>
+                </div>
+                <div class="step-card" style="margin-bottom:16px">
+                    <p class="step-desc"><strong>2.</strong> Pilih periode gaji (bulan)</p>
+                </div>
+                <div class="step-card">
+                    <p class="step-desc"><strong>3.</strong> Lihat rincian gaji pokok, tunjangan, dan potongan</p>
+                </div>
+            </div>
+        </div>
+        <div class="tips-box" style="margin-top:30px">
+            <h4>💡 Tips</h4>
+            <p>Slip gaji baru akan muncul setelah tanggal penggajian setiap bulannya. Jika belum muncul, silakan hubungi
+                HRD.</p>
+        </div>
+        <div class="page-num">10</div>
+    </div>
+
+    <!-- Slide 11: Troubleshooting -->
+    <div class="slide slide-light">
+        <p class="section-num">❓ FAQ</p>
+        <h2 class="section-title">Masalah Umum & Solusinya</h2>
+        <div class="divider"></div>
+        <div class="grid-2">
+            <div>
+                <div class="warning-box">
+                    <h4>❌ "Anda di luar area geofence"</h4>
+                    <p><strong>Solusi:</strong> Pastikan Anda berada di dalam area lokasi kerja. Coba geser posisi
+                        sedikit dan ulangi absen.</p>
+                </div>
+                <div class="warning-box">
+                    <h4>❌ "GPS tidak aktif"</h4>
+                    <p><strong>Solusi:</strong> Aktifkan GPS di pengaturan HP. Settings > Location > ON</p>
+                </div>
+                <div class="warning-box">
+                    <h4>❌ "Gagal upload foto"</h4>
+                    <p><strong>Solusi:</strong> Periksa koneksi internet. Coba pindah ke area dengan sinyal lebih baik.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <div class="warning-box">
+                    <h4>❌ "Tidak bisa login"</h4>
+                    <p><strong>Solusi:</strong> Pastikan username dan password benar. Jika lupa password, hubungi
+                        admin/HRD.</p>
+                </div>
+                <div class="warning-box">
+                    <h4>❌ "Aplikasi force close/crash"</h4>
+                    <p><strong>Solusi:</strong> Update aplikasi ke versi terbaru di Play Store. Atau restart HP dan coba
+                        lagi.</p>
+                </div>
+                <div class="success-box">
+                    <h4>📞 Butuh Bantuan?</h4>
+                    <p>Hubungi Admin atau HRD jika mengalami masalah yang tidak bisa diselesaikan.</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">11</div>
+    </div>
+
+    <!-- Slide 12: Closing -->
+    <div class="slide slide-blue" style="text-align:center">
+        <img src="/images/admin-logo.png" alt="JSMU Guard" class="logo-img">
+        <h1 class="main-title" style="font-size:44px">Terima Kasih!</h1>
+        <p class="subtitle">Mari gunakan aplikasi JSMU Guard untuk meningkatkan kedisiplinan dan profesionalisme kerja.
+        </p>
+        <div class="highlight" style="max-width:600px;margin:40px auto;padding:28px">
+            <h3 style="font-size:20px;margin-bottom:12px">📱 Yang Perlu Diingat:</h3>
+            <p style="font-size:16px;line-height:1.8">
+                ✅ Selalu nyalakan GPS sebelum absen<br>
+                ✅ Absen di lokasi kerja yang benar<br>
+                ✅ Jangan lupa absen keluar<br>
+                ✅ Ajukan cuti minimal H-3
+            </p>
+        </div>
+        <div style="display:flex;gap:40px;justify-content:center;margin-top:30px">
+            <div class="feature-box">
+                <div class="feature-icon">📞</div>
+                <div class="feature-title">Hubungi Admin</div>
+                <div class="feature-desc">Jika butuh bantuan</div>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">💬</div>
+                <div class="feature-title">Tanya HRD</div>
+                <div class="feature-desc">Untuk info lebih lanjut</div>
+            </div>
+        </div>
+        <div class="page-num page-num-white">12</div>
+    </div>
+
+</body>
+
+</html>

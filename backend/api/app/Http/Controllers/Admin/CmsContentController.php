@@ -31,7 +31,7 @@ class CmsContentController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'body' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
         ]);
 
         $data = $request->only(['title', 'body']);

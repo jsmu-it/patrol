@@ -209,11 +209,20 @@ class CompanyProfileController extends Controller
             'tiktok' => 'nullable|string',
             'linkedin' => 'nullable|string',
             'youtube' => 'nullable|string',
+
+            // Consent and Signature
+            'data_consent' => 'required|accepted',
+            'signature' => 'required|string',
         ]);
 
         $path = $request->file('resume')->store('resumes', 'public');
 
-        \App\Models\JobApplication::create($request->except('resume') + ['resume_path' => $path, 'status' => 'pending']);
+        \App\Models\JobApplication::create($request->except('resume') + [
+            'resume_path' => $path,
+            'status' => 'pending',
+            'data_consent' => true,
+            'data_consent_at' => now(),
+        ]);
 
         return redirect()->route('career')->with('success', 'Application submitted successfully! We will review your profile.');
     }

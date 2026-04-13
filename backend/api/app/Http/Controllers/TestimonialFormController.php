@@ -27,7 +27,7 @@ class TestimonialFormController extends Controller
             'client_name' => 'required|string|max:255',
             'client_position' => 'nullable|string|max:255',
             'client_company' => 'nullable|string|max:255',
-            'client_photo' => 'nullable|image|max:2048',
+            'client_photo' => 'nullable|image|max:10240',
             'content' => 'required|string|min:20',
             'rating' => 'required|integer|min:1|max:5',
         ]);

@@ -27,7 +27,7 @@ class CmsServiceController extends Controller
             'title' => 'required|string|max:255',
             'short_description' => 'nullable|string',
             'full_description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'icon' => 'nullable|string|max:255',
             'order' => 'integer',
         ]);
@@ -54,7 +54,7 @@ class CmsServiceController extends Controller
             'title' => 'required|string|max:255',
             'short_description' => 'nullable|string',
             'full_description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'icon' => 'nullable|string|max:255',
             'order' => 'integer',
         ]);

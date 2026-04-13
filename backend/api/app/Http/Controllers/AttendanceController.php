@@ -33,12 +33,14 @@ class AttendanceController extends Controller
         // Check for the last log of the user for this project
         $lastLog = AttendanceLog::query()
             ->where('user_id', $user->id)
+            ->where('project_id', $project->id)
             ->orderByDesc('occurred_at')
+            ->orderByDesc('id')
             ->first();
 
         if ($lastLog && $lastLog->type === AttendanceLog::TYPE_CLOCK_IN) {
             // Check if the last clock-in was from a different day
-            $lastClockInDate = CarbonImmutable::parse($lastLog->occurred_at)->toDateString();
+            $lastClockInDate = CarbonImmutable::parse($lastLog->occurred_at, 'Asia/Jakarta')->toDateString();
             $todayDate = CarbonImmutable::now('Asia/Jakarta')->toDateString();
             
             if ($lastClockInDate === $todayDate) {
@@ -47,9 +49,27 @@ class AttendanceController extends Controller
                     'message' => 'You are currently clocked in. Please clock out first before starting a new shift.',
                 ], 422);
             }
+            
+            // Different day - check if it's an overnight shift
+            // For overnight shifts, prevent clock-in if still within 24-hour window
+            $lastShift = Shift::find($lastLog->shift_id);
+            if ($lastShift && $this->isOvernightShift($lastShift)) {
+                $hoursSinceClockIn = CarbonImmutable::now('Asia/Jakarta')->diffInHours(
+                    CarbonImmutable::parse($lastLog->occurred_at, 'Asia/Jakarta')
+                );
+                
+                // Within 24 hours for overnight shift - still considered clocked in
+                if ($hoursSinceClockIn < 24) {
+                    return response()->json([
+                        'message' => 'You are still in an overnight shift. Please clock out first before starting a new shift.',
+                    ], 422);
+                }
+            }
+            
             // Different day - auto mark previous as incomplete and allow new clock-in
             // Previous attendance without clock-out is treated as incomplete
         }
+
 
         $data = $request->validated();
 
@@ -73,16 +93,16 @@ class AttendanceController extends Controller
             : null;
 
         // Parse custom format: d-m-Y H:i with fallback
-        $occurredAt = CarbonImmutable::now('UTC');
+        $occurredAt = CarbonImmutable::now('Asia/Jakarta');
         if (!empty($data['occurred_at'])) {
             try {
-                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC');
+                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'Asia/Jakarta');
                 if (!$occurredAt) {
-                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'UTC');
+                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'Asia/Jakarta');
                 }
             } catch (\Exception $e) {
                 \Log::warning('ClockIn: Failed to parse occurred_at: ' . $data['occurred_at'] . ' - ' . $e->getMessage());
-                $occurredAt = CarbonImmutable::now('UTC');
+                $occurredAt = CarbonImmutable::now('Asia/Jakarta');
             }
         }
 
@@ -124,16 +144,16 @@ class AttendanceController extends Controller
             : null;
 
         // Parse custom format: d-m-Y H:i with fallback
-        $occurredAt = CarbonImmutable::now('UTC');
+        $occurredAt = CarbonImmutable::now('Asia/Jakarta');
         if (!empty($data['occurred_at'])) {
             try {
-                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'UTC');
+                $occurredAt = CarbonImmutable::createFromFormat('d-m-Y H:i', $data['occurred_at'], 'Asia/Jakarta');
                 if (!$occurredAt) {
-                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'UTC');
+                    $occurredAt = CarbonImmutable::parse($data['occurred_at'], 'Asia/Jakarta');
                 }
             } catch (\Exception $e) {
                 \Log::warning('ClockOut: Failed to parse occurred_at: ' . $data['occurred_at'] . ' - ' . $e->getMessage());
-                $occurredAt = CarbonImmutable::now('UTC');
+                $occurredAt = CarbonImmutable::now('Asia/Jakarta');
             }
         }
 
@@ -171,10 +191,13 @@ class AttendanceController extends Controller
         $query = AttendanceLog::query()
             ->where('user_id', $user->id)
             ->whereBetween('occurred_at', [$from, $to])
-            ->orderByDesc('occurred_at');
+            ->orderByDesc('occurred_at')
+            ->orderByDesc('id');
 
-        if (! empty($data['project_id'])) {
-            $query->where('project_id', $data['project_id']);
+        // Default to active project if not specified
+        $projectId = $data['project_id'] ?? $user->activeProject?->id;
+        if ($projectId) {
+            $query->where('project_id', $projectId);
         }
 
         $logs = $query->paginate(50);
@@ -182,7 +205,35 @@ class AttendanceController extends Controller
         return response()->json(AttendanceLogResource::collection($logs));
     }
 
+    /**
+     * Check if a shift is an overnight shift (crosses midnight).
+     * Overnight shift: end time is earlier than or equal to start time.
+     * e.g., 22:00 - 06:00 = overnight
+     * e.g., 08:00 - 17:00 = NOT overnight
+     */
+    private function isOvernightShift(?Shift $shift): bool
+    {
+        if (!$shift || !$shift->start_time || !$shift->end_time) {
+            return false;
+        }
+        
+        // Parse time in format HH:mm
+        $startParts = explode(':', $shift->start_time);
+        $endParts = explode(':', $shift->end_time);
+        
+        if (count($startParts) < 2 || count($endParts) < 2) {
+            return false;
+        }
+        
+        $startInMinutes = (int)$startParts[0] * 60 + (int)$startParts[1];
+        $endInMinutes = (int)$endParts[0] * 60 + (int)$endParts[1];
+        
+        // Overnight: end time comes before or equal to start time
+        return $endInMinutes <= $startInMinutes;
+    }
+
     private function isWithinGeofence(Project $project, float $latitude, float $longitude): bool
+
     {
         $check = $this->checkGeofence($project, $latitude, $longitude);
         return $check['within'];

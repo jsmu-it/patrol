@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\Shift;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -16,8 +17,12 @@ class ProjectController extends Controller
         $user = $request->user();
         $query = Project::orderBy('name');
 
-        if ($user->isProjectAdmin() && $user->active_project_id) {
-            $query->where('id', $user->active_project_id);
+        // Filter projects based on user's accessible project IDs
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
+            $query->whereIn('id', $accessibleProjectIds);
+        } elseif (!$user->isSuperAdmin() && empty($accessibleProjectIds)) {
+            $query->whereRaw('1 = 0'); // No access
         }
 
         $projects = $query->paginate(20);
@@ -59,7 +64,8 @@ class ProjectController extends Controller
     public function edit(Request $request, Project $project): View
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -69,7 +75,8 @@ class ProjectController extends Controller
     public function update(Request $request, Project $project): RedirectResponse
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -104,7 +111,8 @@ class ProjectController extends Controller
     public function editShifts(Request $request, Project $project): View
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -117,7 +125,8 @@ class ProjectController extends Controller
     public function updateShifts(Request $request, Project $project): RedirectResponse
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -141,7 +150,8 @@ class ProjectController extends Controller
     public function editPkwt(Request $request, Project $project): View
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -151,16 +161,100 @@ class ProjectController extends Controller
     public function updatePkwt(Request $request, Project $project): RedirectResponse
     {
         $user = $request->user();
-        if ($user->isProjectAdmin() && $user->active_project_id !== $project->id) {
+        $accessibleProjectIds = $user->getAccessibleProjectIds();
+        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
             abort(403);
         }
 
         $data = $request->validate([
+            'pkwt_title' => ['nullable', 'string', 'max:255'],
             'pkwt_template' => ['nullable', 'string'],
+            'import_file' => ['nullable', 'file', 'mimes:doc,docx,html,txt', 'max:5120'],
         ]);
 
-        $project->update($data);
+        // Handle DOCX/DOC file import
+        if ($request->hasFile('import_file')) {
+            $file = $request->file('import_file');
+            $extension = strtolower($file->getClientOriginalExtension());
+            
+            if (in_array($extension, ['docx', 'doc'])) {
+                // Convert DOCX to HTML using simple approach
+                $content = $this->convertDocxToHtml($file->getRealPath());
+                if ($content) {
+                    $data['pkwt_template'] = $content;
+                }
+            } else {
+                // For HTML/TXT, just read the content
+                $data['pkwt_template'] = file_get_contents($file->getRealPath());
+            }
+        }
 
-        return redirect()->route('admin.projects.index')->with('status', 'Template PKWT berhasil diperbarui.');
+        // Only update if not import_only request or has template
+        if (!$request->has('import_only') || !empty($data['pkwt_template'])) {
+            $project->update([
+                'pkwt_title' => $data['pkwt_title'] ?? $project->pkwt_title,
+                'pkwt_template' => $data['pkwt_template'] ?? $project->pkwt_template,
+            ]);
+        }
+
+        return redirect()->route('admin.projects.pkwt.edit', $project)->with('status', 'Template PKWT berhasil diperbarui.');
+    }
+
+    /**
+     * Convert DOCX file to HTML
+     */
+    private function convertDocxToHtml(string $filePath): ?string
+    {
+        try {
+            $zip = new \ZipArchive();
+            if ($zip->open($filePath) !== true) {
+                return null;
+            }
+
+            // Read the main document content
+            $content = $zip->getFromName('word/document.xml');
+            $zip->close();
+
+            if (!$content) {
+                return null;
+            }
+
+            // Parse XML
+            $xml = simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NOERROR);
+            if (!$xml) {
+                return null;
+            }
+
+            // Register namespaces
+            $namespaces = $xml->getNamespaces(true);
+            $xml->registerXPathNamespace('w', $namespaces['w'] ?? 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+
+            // Convert to HTML
+            $html = '';
+            $paragraphs = $xml->xpath('//w:p');
+
+            foreach ($paragraphs as $p) {
+                $text = '';
+                $runs = $p->xpath('.//w:r');
+                
+                foreach ($runs as $run) {
+                    $run->registerXPathNamespace('w', $namespaces['w'] ?? 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+                    $tNodes = $run->xpath('.//w:t');
+                    
+                    foreach ($tNodes as $t) {
+                        $text .= (string)$t;
+                    }
+                }
+
+                if (!empty(trim($text))) {
+                    $html .= '<p>' . htmlspecialchars($text) . '</p>' . "\n";
+                }
+            }
+
+            return $html ?: null;
+        } catch (\Exception $e) {
+            \Log::warning('DOCX conversion failed: ' . $e->getMessage());
+            return null;
+        }
     }
 }

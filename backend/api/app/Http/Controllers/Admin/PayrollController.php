@@ -28,6 +28,15 @@ class PayrollController extends Controller
             $query->where('unit', 'like', '%' . $request->unit . '%');
         }
 
+        // Filter by status
+        if ($request->filled('status')) {
+            if ($request->status === 'linked') {
+                $query->whereNotNull('user_id');
+            } elseif ($request->status === 'unlinked') {
+                $query->whereNull('user_id');
+            }
+        }
+
         // Search by name or NIP
         if ($request->filled('search')) {
             $search = $request->search;

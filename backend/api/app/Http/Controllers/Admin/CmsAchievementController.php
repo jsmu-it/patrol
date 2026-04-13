@@ -26,7 +26,7 @@ class CmsAchievementController extends Controller
             'title' => 'required|string|max:255',
             'year' => 'nullable|string|max:4',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'order' => 'integer',
         ]);
 
@@ -50,7 +50,7 @@ class CmsAchievementController extends Controller
             'title' => 'required|string|max:255',
             'year' => 'nullable|string|max:4',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'order' => 'integer',
         ]);
 

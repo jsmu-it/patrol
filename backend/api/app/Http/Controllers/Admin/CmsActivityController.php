@@ -36,7 +36,7 @@ class CmsActivityController extends Controller
             'date' => 'nullable|date',
             'short_description' => 'nullable|string',
             'content' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'type' => 'required|string',
         ]);
 
@@ -63,7 +63,7 @@ class CmsActivityController extends Controller
             'date' => 'nullable|date',
             'short_description' => 'nullable|string',
             'content' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
+            'image' => 'nullable|image|max:10240',
             'type' => 'required|string',
         ]);
 

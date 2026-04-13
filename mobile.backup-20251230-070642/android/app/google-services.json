@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "400887054628",
+    "project_id": "jsmuguard",
+    "storage_bucket": "jsmuguard.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:400887054628:android:9062f43715f674a18af3b1",
+        "android_client_info": {
+          "package_name": "com.jsmu.jsmuguard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPwyaWT-6WMSZH2ilyjFbwAlw9A4tA3uk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

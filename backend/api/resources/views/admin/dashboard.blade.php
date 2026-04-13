@@ -14,6 +14,16 @@
             <div class="mt-1 text-2xl font-semibold text-gray-800">{{ $totalAdmins }}</div>
         </div>
         <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <div class="text-xs text-gray-500">Rata-rata Kinerja (Bulan Ini)</div>
+            <div class="mt-1 flex items-center justify-between">
+                <span class="text-2xl font-semibold text-gray-800">{{ $analytics['performance']['average'] }}%</span>
+                <a href="{{ route('admin.reports.performance') }}" class="text-xs text-blue-600 hover:text-blue-800 hover:underline">Detail</a>
+            </div>
+            <div class="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full bg-blue-600" style="width: {{ $analytics['performance']['average'] }}%"></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
             <div class="text-xs text-gray-500">Total Project</div>
             <div class="mt-1 text-2xl font-semibold text-gray-800">{{ $totalProjects }}</div>
         </div>

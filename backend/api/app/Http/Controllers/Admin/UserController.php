@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Imports\UserImport;
 use App\Exports\UserImportTemplateExport;
+use App\Exports\UserExport;
+use App\Models\LeaveBalance;
+use App\Models\LeaveType;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\UserProfile;
@@ -19,11 +22,16 @@ class UserController extends Controller
     public function index(Request $request): View
     {
         $current = $request->user();
+        $accessibleProjectIds = $current->getAccessibleProjectIds();
+        $hasLimitedAccess = !$current->isSuperAdmin() && !empty($accessibleProjectIds);
 
         $query = User::query()->with('activeProject');
 
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $query->where('active_project_id', $current->active_project_id);
+        // Filter by accessible projects
+        if ($hasLimitedAccess) {
+            $query->whereIn('active_project_id', $accessibleProjectIds);
+        } elseif (!$current->isSuperAdmin() && empty($accessibleProjectIds)) {
+            $query->whereRaw('1 = 0'); // No access
         }
 
         if ($request->filled('role')) {
@@ -51,17 +59,12 @@ class UserController extends Controller
             $query->orderBy('name');
         }
 
-        // Super Admin sees all users (and filters by project_id if provided)
-        // Project Admin only sees users in their project (enforced above)
-        
         $users = $query->paginate(20)->withQueryString();
         
-        // For the filter dropdown:
-        // Super Admin sees all projects.
-        // Project Admin sees ONLY their project.
+        // Filter project dropdown by accessible projects
         $projectsQuery = Project::orderBy('name');
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $projectsQuery->where('id', $current->active_project_id);
+        if ($hasLimitedAccess) {
+            $projectsQuery->whereIn('id', $accessibleProjectIds);
         }
         $projects = $projectsQuery->get();
 
@@ -71,15 +74,25 @@ class UserController extends Controller
     public function create(Request $request): View
     {
         $current = $request->user();
+        $accessibleProjectIds = $current->getAccessibleProjectIds();
+        $hasLimitedAccess = !$current->isSuperAdmin() && !empty($accessibleProjectIds);
 
         $projectsQuery = Project::orderBy('name');
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $projectsQuery->where('id', $current->active_project_id);
+        if ($hasLimitedAccess) {
+            $projectsQuery->whereIn('id', $accessibleProjectIds);
         }
 
         $projects = $projectsQuery->get();
 
-        return view('admin.users.create', compact('projects'));
+        // Get potential supervisors (admins, project admins, superadmins)
+        $supervisors = User::whereIn('role', [
+            User::ROLE_SUPERADMIN,
+            User::ROLE_HRD,
+            User::ROLE_ADMIN,
+            User::ROLE_PROJECT_ADMIN,
+        ])->orderBy('name')->get();
+
+        return view('admin.users.create', compact('projects', 'supervisors'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -93,7 +106,8 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:ADMIN,GUARD'],
             'active_project_id' => ['nullable', 'integer', 'exists:projects,id'],
-            'profile_photo' => ['nullable', 'image', 'max:2048'],
+            'supervisor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'profile_photo' => ['nullable', 'image', 'max:10240'],
             // Profil dasar
             'nip' => ['nullable', 'string', 'max:255'],
             'position' => ['nullable', 'string', 'max:255'],
@@ -196,8 +210,11 @@ class UserController extends Controller
             'youtube' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $data['active_project_id'] = $current->active_project_id;
+        $accessibleProjectIds = $current->getAccessibleProjectIds();
+        if (!$current->isSuperAdmin() && !empty($accessibleProjectIds) && !empty($data['active_project_id'])) {
+            if (!in_array($data['active_project_id'], $accessibleProjectIds)) {
+                abort(403, 'Anda tidak memiliki akses ke project ini.');
+            }
         }
 
         $userData = Arr::only($data, [
@@ -207,6 +224,7 @@ class UserController extends Controller
             'password',
             'role',
             'active_project_id',
+            'supervisor_id',
         ]);
         $profileData = Arr::except($data, array_keys($userData));
 
@@ -228,32 +246,59 @@ class UserController extends Controller
             UserProfile::create($profileData);
         }
 
+        // Initialize leave balances for the new user
+        $currentYear = now()->year;
+        $activeLeaveTypes = LeaveType::active()->get();
+        
+        foreach ($activeLeaveTypes as $leaveType) {
+            LeaveBalance::create([
+                'user_id' => $user->id,
+                'leave_type_id' => $leaveType->id,
+                'quota' => $leaveType->default_quota ?? 0,
+                'used' => 0,
+                'year' => $currentYear,
+            ]);
+        }
+
         return redirect()->route('admin.users.index')->with('status', 'Karyawan berhasil ditambahkan.');
     }
 
     public function edit(Request $request, User $user): View
     {
         $current = $request->user();
+        $accessibleProjectIds = $current->getAccessibleProjectIds();
+        $hasLimitedAccess = !$current->isSuperAdmin() && !empty($accessibleProjectIds);
 
-        if ($current->isProjectAdmin() && $current->active_project_id && $user->active_project_id !== $current->active_project_id) {
+        if ($hasLimitedAccess && !in_array($user->active_project_id, $accessibleProjectIds)) {
             abort(403);
         }
 
         $projectsQuery = Project::orderBy('name');
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $projectsQuery->where('id', $current->active_project_id);
+        if ($hasLimitedAccess) {
+            $projectsQuery->whereIn('id', $accessibleProjectIds);
         }
 
         $projects = $projectsQuery->get();
 
-        return view('admin.users.edit', compact('user', 'projects'));
+        // Get potential supervisors (exclude self)
+        $supervisors = User::whereIn('role', [
+            User::ROLE_SUPERADMIN,
+            User::ROLE_HRD,
+            User::ROLE_ADMIN,
+            User::ROLE_PROJECT_ADMIN,
+        ])->where('id', '!=', $user->id)
+          ->orderBy('name')->get();
+
+        return view('admin.users.edit', compact('user', 'projects', 'supervisors'));
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
         $current = $request->user();
+        $accessibleProjectIds = $current->getAccessibleProjectIds();
+        $hasLimitedAccess = !$current->isSuperAdmin() && !empty($accessibleProjectIds);
 
-        if ($current->isProjectAdmin() && $current->active_project_id && $user->active_project_id !== $current->active_project_id) {
+        if ($hasLimitedAccess && !in_array($user->active_project_id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -264,7 +309,8 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:6'],
             'role' => ['required', 'in:ADMIN,GUARD'],
             'active_project_id' => ['nullable', 'integer', 'exists:projects,id'],
-            'profile_photo' => ['nullable', 'image', 'max:2048'],
+            'supervisor_id' => ['nullable', 'integer', 'exists:users,id'],
+            'profile_photo' => ['nullable', 'image', 'max:10240'],
             // Profil dasar
             'nip' => ['nullable', 'string', 'max:255'],
             'position' => ['nullable', 'string', 'max:255'],
@@ -367,8 +413,10 @@ class UserController extends Controller
             'youtube' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if ($current->isProjectAdmin() && $current->active_project_id) {
-            $data['active_project_id'] = $current->active_project_id;
+        if ($hasLimitedAccess && !empty($data['active_project_id'])) {
+            if (!in_array($data['active_project_id'], $accessibleProjectIds)) {
+                abort(403, 'Anda tidak memiliki akses ke project ini.');
+            }
         }
 
         $userData = Arr::only($data, [
@@ -378,6 +426,7 @@ class UserController extends Controller
             'password',
             'role',
             'active_project_id',
+            'supervisor_id',
         ]);
         $profileData = Arr::except($data, array_keys($userData));
 
@@ -409,8 +458,10 @@ class UserController extends Controller
     public function destroy(User $user): RedirectResponse
     {
         $current = auth()->user();
+        $accessibleProjectIds = $current ? $current->getAccessibleProjectIds() : [];
+        $hasLimitedAccess = $current && !$current->isSuperAdmin() && !empty($accessibleProjectIds);
 
-        if ($current && $current->isProjectAdmin() && $current->active_project_id && $user->active_project_id !== $current->active_project_id) {
+        if ($hasLimitedAccess && !in_array($user->active_project_id, $accessibleProjectIds)) {
             abort(403);
         }
 
@@ -425,7 +476,8 @@ class UserController extends Controller
 
     public function showImportForm(Request $request): View
     {
-        if (! $request->user()->isAdmin()) {
+        $user = $request->user();
+        if (! $user->isAdmin() && ! $user->isHrd()) {
             abort(403);
         }
 
@@ -434,7 +486,8 @@ class UserController extends Controller
 
     public function import(Request $request): RedirectResponse
     {
-        if (! $request->user()->isAdmin()) {
+        $user = $request->user();
+        if (! $user->isAdmin() && ! $user->isHrd()) {
             abort(403);
         }
 
@@ -447,8 +500,15 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('status', 'Import karyawan berhasil diproses.');
     }
 
+
     public function downloadImportTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         return Excel::download(new UserImportTemplateExport(), 'user_import_template.xlsx');
+    }
+
+    public function export(Request $request): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $filename = 'data_karyawan_' . now()->format('Y-m-d_His') . '.xlsx';
+        return Excel::download(new UserExport($request), $filename);
     }
 }

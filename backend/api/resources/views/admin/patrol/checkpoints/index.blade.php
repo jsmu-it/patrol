@@ -8,6 +8,7 @@
         <div class="text-sm text-gray-600">Daftar titik patroli berdasarkan project.</div>
         <div class="flex gap-2">
             <a href="{{ route('admin.patrol.checkpoints.printAll', request()->only('project_id')) }}" target="_blank" class="px-3 py-2 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500">Print Semua</a>
+            <a href="{{ route('admin.patrol.checkpoints.import.form') }}" class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 text-xs font-medium hover:bg-gray-50">Import</a>
             <a href="{{ route('admin.patrol.checkpoints.create') }}" class="px-3 py-2 rounded-md bg-slate-900 text-white text-xs font-medium hover:bg-slate-800">Tambah Lokasi</a>
         </div>
     </div>

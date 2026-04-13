@@ -17,6 +17,7 @@
         body { font-family: 'Inter', sans-serif; }
         .hero-gradient { background: linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.3)); }
     </style>
+    @stack('styles')
 </head>
 <body class="antialiased text-gray-800 bg-white flex flex-col min-h-screen">
 
@@ -258,5 +259,6 @@
         </div>
     </footer>
 
+    @stack('scripts')
 </body>
 </html>

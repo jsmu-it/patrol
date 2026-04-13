@@ -235,89 +235,31 @@
         </div>
     </div>
 
-    <!-- Acceptance Modal -->
-    <div id="acceptanceModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Terima Karyawan</h3>
-            <p class="text-sm text-gray-600 mb-4">Silakan lengkapi data berikut untuk memproses penerimaan karyawan.</p>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Project Penempatan</label>
-                    <select form="statusForm" name="project_id" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                        <option value="">Pilih Project</option>
-                        @foreach($projects as $project)
-                            <option value="{{ $project->id }}">{{ $project->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">NIP (Nomor Induk Pegawai)</label>
-                    <input form="statusForm" type="text" name="nip" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Masukkan NIP">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Gaji Pokok</label>
-                    <input form="statusForm" type="number" name="salary" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" placeholder="Contoh: 4500000">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Bergabung</label>
-                    <input form="statusForm" type="date" name="join_date" value="{{ date('Y-m-d') }}" class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3">
-                <button type="button" id="cancelAcceptance" class="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">Batal</button>
-                <button type="button" id="confirmAcceptance" class="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700">Konfirmasi & Simpan</button>
-            </div>
-        </div>
-    </div>
-
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const statusSelect = document.getElementById('statusSelect');
             const statusForm = document.getElementById('statusForm');
-            const acceptanceModal = document.getElementById('acceptanceModal');
-            const cancelBtn = document.getElementById('cancelAcceptance');
-            const confirmBtn = document.getElementById('confirmAcceptance');
-            
-            let isModalConfirmed = false;
 
             if (statusForm) {
                 statusForm.addEventListener('submit', (e) => {
-                    if (statusSelect.value === 'accepted' && !isModalConfirmed) {
-                        e.preventDefault();
-                        acceptanceModal.classList.remove('hidden');
-                        acceptanceModal.classList.add('flex');
+                    if (statusSelect.value === 'accepted') {
+                        if (!confirm('Terima pelamar ini? Data akan masuk ke menu PKWT untuk dilengkapi.')) {
+                            e.preventDefault();
+                            return;
+                        }
                     }
-                });
-            }
-
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => {
-                    acceptanceModal.classList.add('hidden');
-                    acceptanceModal.classList.remove('flex');
-                    statusSelect.value = 'pending'; 
-                });
-            }
-
-            if (confirmBtn) {
-                confirmBtn.addEventListener('click', () => {
-                    // Basic validation
-                    const projectId = statusForm.querySelector('[name="project_id"]').value;
-                    const nip = statusForm.querySelector('[name="nip"]').value;
-                    const salary = statusForm.querySelector('[name="salary"]').value;
-
-                    if (!projectId || !nip || !salary) {
-                        alert('Mohon lengkapi semua field (Project, NIP, Gaji).');
-                        return;
+                    
+                    if (statusSelect.value === 'rejected') {
+                        if (!confirm('Tolak pelamar ini?')) {
+                            e.preventDefault();
+                            return;
+                        }
                     }
-
-                    isModalConfirmed = true;
-                    statusForm.submit();
                 });
             }
         });
     </script>
 @endpush
 @endsection
+
