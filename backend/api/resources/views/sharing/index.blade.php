@@ -81,6 +81,16 @@
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4-4v12"></path></svg>
                                 </a>
                             @endif
+                            
+                            {{-- Share Button --}}
+                            <button type="button" 
+                                    onclick="copyShareLink('{{ $item->type === 'folder' ? route('sharing.index', ['folder' => $item->id]) : route('sharing.download', $item) }}', '{{ $item->name }}')" 
+                                    class="text-emerald-600 hover:text-emerald-900" 
+                                    title="Share Link">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                </svg>
+                            </button>
                             @auth
                             <form action="{{ route('sharing.destroy', $item) }}" method="POST" onsubmit="return confirm('Hapus item ini?')">
                                 @csrf
@@ -188,6 +198,14 @@
     </div>
 </div>
 
+<!-- Toast Notification -->
+<div id="shareToast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+    <div class="bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center space-x-2">
+        <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <span class="text-sm font-medium">Link berhasil disalin!</span>
+    </div>
+</div>
+
 <script>
     function openModal(id) {
         document.getElementById(id).classList.remove('hidden');
@@ -203,11 +221,55 @@
             closeModal('unlockModal');
         }
     });
-    // Auto-focus unlock password if modal is open
     @if($unlockFolderId)
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => document.getElementById('unlock_password')?.focus(), 100);
     });
     @endif
+
+    function copyShareLink(url, name) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast();
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                fallbackCopyTextToClipboard(url);
+            });
+        } else {
+            fallbackCopyTextToClipboard(url);
+        }
+    }
+
+    function fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Ensure textarea is not visible but part of DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+
+        try {
+            document.execCommand('copy');
+            showToast();
+        } catch (err) {
+            console.error('Fallback: Gagal menyalin', err);
+        }
+
+        document.body.removeChild(textArea);
+    }
+
+    function showToast() {
+        const toast = document.getElementById('shareToast');
+        toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+        }, 3000);
+    }
 </script>
 @endsection
