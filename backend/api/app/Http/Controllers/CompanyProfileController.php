@@ -61,7 +61,10 @@ class CompanyProfileController extends Controller
 
     public function services()
     {
-        $services = CmsService::orderBy('order')->get();
+        // Hanya layanan utama yang jadi bagian besar; anak menu tampil sebagai
+        // sub-bagian di dalam induknya, dengan penanda sendiri agar tautan menu
+        // tetap melompat tepat ke tempatnya.
+        $services = CmsService::utama()->urut()->with('children')->get();
         return view('company_profile.services', compact('services'));
     }
 
@@ -102,6 +105,33 @@ class CompanyProfileController extends Controller
     public function contact()
     {
         return view('company_profile.contact');
+    }
+
+    /**
+     * Halaman unduhan aplikasi. Rute application & application.download sudah
+     * terdaftar di routes/web.php sejak lama, tetapi kedua method-nya tidak
+     * pernah dibuat sehingga /application selalu 500.
+     */
+    public function application()
+    {
+        $applications = \App\Models\CmsApplication::where('is_active', true)
+            ->orderBy('order')
+            ->get();
+
+        return view('company_profile.application', compact('applications'));
+    }
+
+    public function downloadApplication(\App\Models\CmsApplication $application)
+    {
+        abort_unless($application->is_active, 404);
+
+        $application->increment('download_count');
+
+        if (! $application->file_path || ! \Illuminate\Support\Facades\Storage::disk('public')->exists($application->file_path)) {
+            abort(404, 'Berkas aplikasi belum tersedia.');
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->download($application->file_path);
     }
 
     public function privacy()

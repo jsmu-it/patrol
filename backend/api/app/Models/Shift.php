@@ -9,7 +9,14 @@ class Shift extends Model
 {
     use HasFactory;
 
+    /** Setiap shift dimiliki satu project. */
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     protected $fillable = [
+        'project_id',
         'name',
         'code',
         'start_time',

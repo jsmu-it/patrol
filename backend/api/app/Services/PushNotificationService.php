@@ -20,7 +20,10 @@ class PushNotificationService
 
         $credentialsPath = config('services.fcm.credentials');
         if (! $credentialsPath || ! is_readable($credentialsPath)) {
-            Log::warning('FIREBASE_CREDENTIALS not configured or not readable; push notifications disabled.');
+            // Dicatat sebagai error, bukan warning: level log server ini
+            // 'error', sehingga peringatan tidak pernah muncul dan kegagalan
+            // kirim notifikasi berlalu tanpa jejak sama sekali.
+            Log::error('FIREBASE_CREDENTIALS belum disetel atau tidak terbaca; notifikasi HP tidak akan terkirim.');
             return;
         }
 
@@ -58,13 +61,13 @@ class PushNotificationService
         }
 
         if (! $this->projectId) {
-            Log::warning('FIREBASE_PROJECT_ID not configured; push notifications disabled.');
+            Log::error('FIREBASE_PROJECT_ID belum disetel; notifikasi HP tidak akan terkirim.');
             return;
         }
 
         $accessToken = $this->getAccessToken();
         if (! $accessToken) {
-            Log::warning('Unable to obtain FCM access token; push notifications disabled.');
+            Log::error('Gagal mengambil token akses FCM; notifikasi HP tidak akan terkirim.');
             return;
         }
 

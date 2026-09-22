@@ -4,3 +4,21 @@
 .DS_Store
 /vendor
 /node_modules
+deploy/backups/
+
+# Kunci penandatanganan Android — tidak boleh masuk repo.
+# Bocornya berarti orang lain bisa membuat aplikasi palsu yang dikenali
+# Android sebagai aplikasi resmi JSMU.
+deploy/keystore/
+*.jks
+*.keystore
+
+# Berisi kunci API server media Meeting. Salinan tanpa kunci ada di
+# deploy/livekit/livekit.yaml.example
+deploy/livekit/livekit.yaml
+
+# Hasil build aplikasi (ratusan MB) — dibagikan lewat portal, bukan lewat repo
+deploy/apk/*.apk
+deploy/apk/*.aab
+# Berisi kata sandi tautan unduh
+deploy/apk/SANDI-UNDUH-AAB.txt

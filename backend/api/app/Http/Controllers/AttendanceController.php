@@ -73,11 +73,13 @@ class AttendanceController extends Controller
 
         $data = $request->validated();
 
+        $akurasi = isset($data['accuracy']) ? (float) $data['accuracy'] : null;
+        $geofenceCheck = $this->checkGeofence($project, $data['latitude'], $data['longitude'], $akurasi);
+
         if ($data['mode'] === AttendanceLog::MODE_NORMAL) {
-            $geofenceCheck = $this->checkGeofence($project, $data['latitude'], $data['longitude']);
             if (! $geofenceCheck['within']) {
                 return response()->json([
-                    'message' => "Anda berada {$geofenceCheck['distance']}m dari lokasi. Maksimal {$geofenceCheck['radius']}m.",
+                    'message' => $this->pesanDiLuarRadius($geofenceCheck, $akurasi),
                     'debug' => [
                         'your_location' => ['lat' => $data['latitude'], 'lng' => $data['longitude']],
                         'project_location' => ['lat' => $project->latitude, 'lng' => $project->longitude],
@@ -114,6 +116,8 @@ class AttendanceController extends Controller
             'occurred_at' => $occurredAt,
             'latitude' => $data['latitude'],
             'longitude' => $data['longitude'],
+            'gps_accuracy_meters' => $akurasi !== null ? min(65535, (int) round($akurasi)) : null,
+            'distance_meters' => (int) round($geofenceCheck['distance']),
             'selfie_photo_path' => $photoPath,
             'note' => $data['note'] ?? null,
             'mode' => $data['mode'],
@@ -138,6 +142,11 @@ class AttendanceController extends Controller
         $shift = Shift::findOrFail($request->integer('shift_id'));
 
         $data = $request->validated();
+
+        // Pulang tidak dibatasi geofence, tetapi mutu sinyal dan jaraknya tetap
+        // dicatat supaya riwayatnya bisa ditelusuri sama seperti absen masuk.
+        $akurasi = isset($data['accuracy']) ? (float) $data['accuracy'] : null;
+        $geofenceCheck = $this->checkGeofence($project, $data['latitude'], $data['longitude'], $akurasi);
 
         $photoPath = $request->file('selfie')
             ? $request->file('selfie')->store('attendance/selfies', 'public')
@@ -165,6 +174,8 @@ class AttendanceController extends Controller
             'occurred_at' => $occurredAt,
             'latitude' => $data['latitude'],
             'longitude' => $data['longitude'],
+            'gps_accuracy_meters' => $akurasi !== null ? min(65535, (int) round($akurasi)) : null,
+            'distance_meters' => (int) round($geofenceCheck['distance']),
             'selfie_photo_path' => $photoPath,
             'note' => $data['note'] ?? null,
             'mode' => AttendanceLog::MODE_NORMAL,
@@ -239,10 +250,31 @@ class AttendanceController extends Controller
         return $check['within'];
     }
 
-    private function checkGeofence(Project $project, float $latitude, float $longitude): array
+    /**
+     * Toleransi maksimum yang boleh disumbangkan ketidakpastian GPS, dalam meter.
+     *
+     * Titik yang dilaporkan perangkat bukan satu koordinat pasti, melainkan
+     * pusat lingkaran seluas `accuracy`. Petugas yang benar-benar berdiri di
+     * dalam pagar bisa terbaca di luar radius ketika sinyalnya buruk — di dalam
+     * gedung, di basement, atau saat GPS baru menyala. Karena itu jarak diberi
+     * kelonggaran sebesar akurasi yang dilaporkan, tetapi dibatasi agar fix yang
+     * benar-benar kacau (ratusan meter, biasanya dari menara seluler) tidak bisa
+     * dipakai untuk absen dari rumah.
+     */
+    private const TOLERANSI_GPS_MAKS = 75.0;
+
+    /**
+     * Di atas angka ini titiknya tidak layak dipakai menilai apa pun: sebaran
+     * ratusan meter berarti perangkat menebak dari menara seluler, bukan
+     * mengunci satelit. Kelonggaran tidak diberikan sama sekali, dan petugas
+     * diminta mengulang setelah sinyalnya membaik.
+     */
+    private const AKURASI_TIDAK_LAYAK = 150.0;
+
+    private function checkGeofence(Project $project, float $latitude, float $longitude, ?float $accuracy = null): array
     {
         if ($project->latitude === null || $project->longitude === null || $project->geofence_radius_meters === null) {
-            return ['within' => false, 'distance' => 0, 'radius' => 0];
+            return ['within' => false, 'distance' => 0, 'radius' => 0, 'toleransi' => 0];
         }
 
         $distanceMeters = $this->haversineDistance(
@@ -253,12 +285,39 @@ class AttendanceController extends Controller
         );
 
         $radius = (float) $project->geofence_radius_meters;
-        
+
+        // Kelonggaran hanya sebesar ketidakpastian yang benar-benar dilaporkan,
+        // dan hanya bila pembacaannya masih masuk akal.
+        $toleransi = $accuracy !== null && $accuracy > 0 && $accuracy <= self::AKURASI_TIDAK_LAYAK
+            ? min($accuracy, self::TOLERANSI_GPS_MAKS)
+            : 0.0;
+
         return [
-            'within' => $distanceMeters <= $radius,
+            'within' => ($distanceMeters - $toleransi) <= $radius,
             'distance' => round($distanceMeters, 1),
             'radius' => $radius,
+            'toleransi' => round($toleransi, 1),
         ];
+    }
+
+    /** Pesan penolakan yang menyebut sebabnya, bukan sekadar angka jarak. */
+    private function pesanDiLuarRadius(array $cek, ?float $akurasi): string
+    {
+        $pesan = "Anda terbaca {$cek['distance']}m dari lokasi, batasnya {$cek['radius']}m.";
+
+        if ($akurasi === null) {
+            return $pesan . ' Pastikan GPS aktif dan Anda berada di area lokasi tugas.';
+        }
+
+        $akurasiBulat = (int) round($akurasi);
+
+        // Sinyal buruk lebih sering jadi biang keladi daripada posisi yang salah.
+        if ($akurasi > self::AKURASI_TIDAK_LAYAK) {
+            return $pesan . " Sinyal GPS sedang lemah (±{$akurasiBulat}m)."
+                . ' Coba keluar sebentar ke area terbuka, tunggu beberapa detik, lalu ulangi.';
+        }
+
+        return $pesan . " Akurasi GPS ±{$akurasiBulat}m sudah diperhitungkan.";
     }
 
     private function haversineDistance(float $lat1, float $lon1, float $lat2, float $lon2): float

@@ -17,6 +17,12 @@ class Authenticate extends Middleware
             return null;
         }
 
+        // Portal karyawan punya pintu masuknya sendiri; login admin menolak
+        // peran GUARD sehingga karyawan akan mentok bila diarahkan ke sana.
+        if ($request->is('portal') || $request->is('portal/*')) {
+            return route('portal.login');
+        }
+
         if ($request->is('admin') || $request->is('admin/*')) {
             return route('admin.login');
         }

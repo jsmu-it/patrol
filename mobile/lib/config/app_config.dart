@@ -13,6 +13,6 @@ class AppConfig {
 //});
 final appConfigProvider = Provider<AppConfig>((ref) {
   return const AppConfig(
-    apiBaseUrl: 'https://guard.jsmu.co.id/api',
+    apiBaseUrl: 'https://jsmu.co.id/api',
   );
 });

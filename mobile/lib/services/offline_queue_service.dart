@@ -21,11 +21,17 @@ class SyncEvent {
   final int pendingCount;
   final int syncedCount;
   final bool isComplete;
-  
+
+  /// Server menolak karena sesi tidak sah (401). Bukan urusan sinyal — data
+  /// akan menumpuk selamanya sampai penggunanya masuk ulang, jadi keadaan ini
+  /// harus dibedakan dari "sedang offline" agar bisa diberitahukan apa adanya.
+  final bool sesiKedaluwarsa;
+
   const SyncEvent({
     required this.pendingCount,
     required this.syncedCount,
     required this.isComplete,
+    this.sesiKedaluwarsa = false,
   });
 }
 
@@ -36,6 +42,10 @@ class OfflineQueueService {
   final ApiClient _apiClient;
 
   bool _syncing = false;
+
+  /// Benar bila upaya kirim terakhir ditolak karena sesi tidak sah.
+  bool _sesiKedaluwarsa = false;
+  bool get sesiKedaluwarsa => _sesiKedaluwarsa;
   
   final _syncController = StreamController<SyncEvent>.broadcast();
   Stream<SyncEvent> get onSyncStateChanged => _syncController.stream;
@@ -121,6 +131,7 @@ class OfflineQueueService {
     required int shiftId,
     required double latitude,
     required double longitude,
+    double? accuracy,
     required String mode,
     String? note,
     required String selfiePath,
@@ -134,6 +145,7 @@ class OfflineQueueService {
         'shift_id': shiftId,
         'latitude': latitude,
         'longitude': longitude,
+        'accuracy': accuracy,
         'mode': mode,
         'note': note,
         'selfie_path': selfiePath,
@@ -146,6 +158,7 @@ class OfflineQueueService {
     required int shiftId,
     required double latitude,
     required double longitude,
+    double? accuracy,
     String? note,
     String? selfiePath,
     String? occurredAt,
@@ -158,6 +171,7 @@ class OfflineQueueService {
         'shift_id': shiftId,
         'latitude': latitude,
         'longitude': longitude,
+        'accuracy': accuracy,
         'note': note,
         'selfie_path': selfiePath,
         'occurred_at': occurredAt,
@@ -166,6 +180,7 @@ class OfflineQueueService {
   }
 
   Future<void> enqueuePatrolLog({
+    double? accuracy,
     required int projectId,
     required String checkpointCode,
     required String title,
@@ -272,6 +287,16 @@ class OfflineQueueService {
             print('[Queue] Sync aborted due to offline error');
             return;
           }
+          if (e is ApiException && e.statusCode == 401) {
+            // Patroli pun ikut mengendap kalau sesinya sudah tidak sah.
+            _sesiKedaluwarsa = true;
+            _syncController.add(SyncEvent(
+              pendingCount: await getPendingCount(),
+              syncedCount: 0,
+              isComplete: false,
+              sesiKedaluwarsa: true,
+            ));
+          }
         }
       }));
 
@@ -301,7 +326,14 @@ class OfflineQueueService {
             break;
           }
           if (e.statusCode == 401) {
-            // Unauthorized — stop, user needs to login again
+            // Sesi tidak sah — hentikan, penggunanya harus masuk ulang.
+            _sesiKedaluwarsa = true;
+            _syncController.add(SyncEvent(
+              pendingCount: await getPendingCount(),
+              syncedCount: 0,
+              isComplete: false,
+              sesiKedaluwarsa: true,
+            ));
             break;
           }
           // For 4xx permanent errors (e.g. 422 validation, 404 shift not found),
@@ -317,6 +349,7 @@ class OfflineQueueService {
       }
 
       if (processedIds.isNotEmpty) {
+         _sesiKedaluwarsa = false;   // ada yang berhasil, berarti sesinya sah
          await _removeItems(processedIds);
          final remainingCount = await getPendingCount();
          _syncController.add(SyncEvent(
@@ -345,6 +378,11 @@ class OfflineQueueService {
       'longitude': data['longitude'],
       'mode': data['mode'],
     };
+
+    // Server memakai ini sebagai toleransi geofence; antrean lama belum punya.
+    if (data['accuracy'] != null) {
+      map['accuracy'] = data['accuracy'];
+    }
 
     if (data['occurred_at'] != null) {
       map['occurred_at'] = data['occurred_at'];
@@ -382,6 +420,10 @@ class OfflineQueueService {
       'latitude': data['latitude'],
       'longitude': data['longitude'],
     };
+
+    if (data['accuracy'] != null) {
+      map['accuracy'] = data['accuracy'];
+    }
 
     if (data['occurred_at'] != null) {
       map['occurred_at'] = data['occurred_at'];
@@ -423,6 +465,11 @@ class OfflineQueueService {
       'longitude': data['longitude'],
       'type': data['type'],
     };
+
+    // Dipakai server sebagai toleransi jarak ke titik patroli.
+    if (data['accuracy'] != null) {
+      map['accuracy'] = data['accuracy'];
+    }
 
     if (data['occurred_at'] != null) {
       map['occurred_at'] = data['occurred_at'];

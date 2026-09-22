@@ -92,10 +92,11 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::get('users-export', [\App\Http\Controllers\Admin\UserController::class, 'export'])->name('users.export');
 
         Route::resource('projects', ProjectController::class)->except(['show']);
-        Route::get('projects/{project}/shifts', [ProjectController::class, 'editShifts'])->name('projects.shifts.edit');
-        Route::post('projects/{project}/shifts', [ProjectController::class, 'updateShifts'])->name('projects.shifts.update');
+        // Shift dikelola di dalam halaman Edit Project, satu set per project.
+        Route::post('projects/{project}/shifts', [ProjectController::class, 'storeShift'])->name('projects.shifts.store');
+        Route::put('projects/{project}/shifts/{shift}', [ProjectController::class, 'updateShift'])->name('projects.shifts.update');
+        Route::delete('projects/{project}/shifts/{shift}', [ProjectController::class, 'destroyShift'])->name('projects.shifts.destroy');
         
-        Route::resource('shifts', \App\Http\Controllers\Admin\ShiftController::class)->except(['show']);
 
         Route::get('projects/{project}/pkwt', [ProjectController::class, 'editPkwt'])->name('projects.pkwt.edit');
         Route::put('projects/{project}/pkwt', [ProjectController::class, 'updatePkwt'])->name('projects.pkwt.update');
@@ -115,10 +116,12 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
         Route::get('approvals/attendance', [ApprovalController::class, 'attendance'])->name('approvals.attendance');
         Route::post('approvals/attendance/{attendanceLog}/approve', [ApprovalController::class, 'approveAttendance'])->name('approvals.attendance.approve');
         Route::post('approvals/attendance/{attendanceLog}/reject', [ApprovalController::class, 'rejectAttendance'])->name('approvals.attendance.reject');
+        Route::post('approvals/attendance-bulk', [ApprovalController::class, 'bulkAttendance'])->name('approvals.attendance.bulk');
 
         Route::get('approvals/leave', [ApprovalController::class, 'leave'])->name('approvals.leave');
         Route::post('approvals/leave/{leaveRequest}/approve', [ApprovalController::class, 'approveLeave'])->name('approvals.leave.approve');
         Route::post('approvals/leave/{leaveRequest}/reject', [ApprovalController::class, 'rejectLeave'])->name('approvals.leave.reject');
+        Route::post('approvals/leave-bulk', [ApprovalController::class, 'bulkLeave'])->name('approvals.leave.bulk');
 
         Route::resource('patrol-checkpoints', CheckpointController::class)
             ->names('patrol.checkpoints')
@@ -285,6 +288,143 @@ Route::middleware(['auth', 'role:SUPERADMIN,ADMIN,PROJECT_ADMIN,HRD,PAYROLL,CMS'
 });
 
 // Public File Sharing (no auth required)
+/*
+|--------------------------------------------------------------------------
+| WOPI — jembatan untuk editor dokumen daring
+|--------------------------------------------------------------------------
+| Dipanggil kontainer editor dari dalam jaringan server, jadi tanpa sesi login.
+| Pengamanannya tiket akses pada parameter `access_token`.
+*/
+Route::prefix('wopi/files/{item}')->name('wopi.')->group(function (): void {
+    $w = \App\Http\Controllers\WopiController::class;
+    Route::get('/', [$w, 'checkFileInfo'])->name('checkFileInfo');
+    Route::get('/contents', [$w, 'getFile'])->name('getFile');
+    Route::post('/contents', [$w, 'putFile'])->name('putFile');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Portal Kerja JSMU  (/portal)
+|--------------------------------------------------------------------------
+| Login memakai akun yang sama dengan formulir PDP: username = NIP.
+| Terbuka untuk semua karyawan, bukan hanya peran admin.
+*/
+Route::prefix('portal')->name('portal.')->group(function (): void {
+    Route::get('/login', [\App\Http\Controllers\Portal\AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\Portal\AuthController::class, 'login'])->name('login.post');
+
+    // Tautan berbagi folder — sengaja di luar middleware auth, cukup punya tautannya.
+    Route::prefix('berbagi')->name('share.')->group(function (): void {
+        $sc = \App\Http\Controllers\Portal\ShareController::class;
+        Route::get('/{token}', [$sc, 'show'])->name('show');
+        Route::get('/{token}/folder/{sub}', [$sc, 'show'])->name('sub');
+        Route::post('/{token}/buka', [$sc, 'buka'])->name('buka');
+        Route::get('/{token}/berkas/{item}', [$sc, 'unduh'])->name('unduh');
+    });
+
+    Route::middleware('auth')->group(function (): void {
+        Route::post('/logout', [\App\Http\Controllers\Portal\AuthController::class, 'logout'])->name('logout');
+        Route::get('/', [\App\Http\Controllers\Portal\HomeController::class, 'index'])->name('home');
+
+        // Kotak masuk pemberitahuan
+        Route::prefix('notifikasi')->name('notifikasi.')->group(function (): void {
+            $n = \App\Http\Controllers\Portal\NotifikasiController::class;
+            Route::get('/', [$n, 'index'])->name('index');
+            Route::post('/baca-semua', [$n, 'bacaSemua'])->name('baca-semua');
+            Route::get('/{id}', [$n, 'baca'])->name('baca');
+        });
+
+        // RPTK — Rencana Permintaan Tenaga Kerja
+        Route::prefix('rptk')->name('rptk.')->group(function (): void {
+            $r = \App\Http\Controllers\Portal\RptkController::class;
+            Route::get('/', [$r, 'index'])->name('index');
+            Route::get('/buat', [$r, 'create'])->name('create');
+            Route::post('/', [$r, 'store'])->name('store');
+            Route::get('/{rptk}', [$r, 'show'])->name('show');
+            Route::get('/{rptk}/pdf', [$r, 'pdf'])->name('pdf');
+            Route::post('/{rptk}/putuskan', [$r, 'putuskan'])->name('putuskan');
+        });
+
+        // Meeting — rapat daring lewat peramban
+        Route::prefix('meeting')->name('meeting.')->group(function (): void {
+            $m = \App\Http\Controllers\Portal\MeetingController::class;
+            Route::get('/', [$m, 'index'])->name('index');
+            Route::post('/', [$m, 'store'])->name('store');
+            Route::get('/{meeting}', [$m, 'room'])->name('room');
+            Route::post('/{meeting}/akhiri', [$m, 'end'])->name('end');
+        });
+
+        // PBG — Permintaan Barang Gudang (GA/FM-01-01)
+        Route::prefix('pbg')->name('pbg.')->group(function (): void {
+            $b = \App\Http\Controllers\Portal\PbgController::class;
+            Route::get('/', [$b, 'index'])->name('index');
+            Route::get('/buat', [$b, 'create'])->name('create');
+            Route::post('/', [$b, 'store'])->name('store');
+            Route::get('/{pbg}', [$b, 'show'])->name('show');
+            Route::get('/{pbg}/pdf', [$b, 'pdf'])->name('pdf');
+            Route::post('/{pbg}/putuskan', [$b, 'putuskan'])->name('putuskan');
+            Route::post('/{pbg}/proses', [$b, 'proses'])->name('proses');
+        });
+
+        // Permintaan Kendaraan
+        Route::prefix('kendaraan')->name('kendaraan.')->group(function (): void {
+            $k = \App\Http\Controllers\Portal\KendaraanController::class;
+            Route::get('/', [$k, 'index'])->name('index');
+            Route::get('/buat', [$k, 'create'])->name('create');
+            Route::post('/', [$k, 'store'])->name('store');
+            Route::get('/{kendaraan}', [$k, 'show'])->name('show');
+            Route::get('/{kendaraan}/pdf', [$k, 'pdf'])->name('pdf');
+            Route::post('/{kendaraan}/putuskan', [$k, 'putuskan'])->name('putuskan');
+            Route::post('/{kendaraan}/tindak', [$k, 'tindak'])->name('tindak');
+        });
+
+        // Sasaran Mutu — Laporan Pencapaian Sasaran Mutu (MR/FM-07-02a)
+        Route::prefix('sasaran-mutu')->name('sasaran-mutu.')->group(function (): void {
+            $sm = \App\Http\Controllers\Portal\SasaranMutuController::class;
+            Route::get('/', [$sm, 'index'])->name('index');
+            Route::get('/buat', [$sm, 'create'])->name('create');
+            Route::post('/', [$sm, 'store'])->name('store');
+            Route::get('/{sasaranMutu}', [$sm, 'show'])->name('show');
+            Route::get('/{sasaranMutu}/pdf', [$sm, 'pdf'])->name('pdf');
+            Route::post('/{sasaranMutu}/putuskan', [$sm, 'putuskan'])->name('putuskan');
+        });
+
+        // JOC — JSMU Observation Card
+        Route::prefix('joc')->name('joc.')->group(function (): void {
+            $j = \App\Http\Controllers\Portal\JocController::class;
+            Route::get('/', [$j, 'index'])->name('index');
+            Route::get('/buat', [$j, 'create'])->name('create');
+            Route::post('/', [$j, 'store'])->name('store');
+            Route::get('/{joc}', [$j, 'show'])->name('show');
+            Route::get('/{joc}/foto/{index}', [$j, 'foto'])->name('foto');
+            Route::post('/{joc}/tanggapi', [$j, 'tanggapi'])->name('tanggapi');
+        });
+
+        Route::prefix('penyimpanan')->name('storage.')->group(function (): void {
+            $c = \App\Http\Controllers\Portal\StorageController::class;
+            Route::get('/', [$c, 'index'])->name('index');
+            Route::get('/sampah', [$c, 'sampah'])->name('sampah');
+            Route::post('/folder', [$c, 'buatFolder'])->name('folder');
+            Route::post('/unggah', [$c, 'unggah'])->name('unggah');
+            Route::post('/kosongkan-sampah', [$c, 'kosongkanSampah'])->name('kosongkan');
+            Route::get('/{item}/unduh', [$c, 'unduh'])->name('unduh');
+            Route::get('/{item}/sunting', \App\Http\Controllers\Portal\SuntingDokumenController::class)->name('sunting');
+            Route::put('/{item}/nama', [$c, 'ubahNama'])->name('nama');
+            Route::put('/{item}/pindah', [$c, 'pindah'])->name('pindah');
+            Route::put('/{item}/berbagi', [$c, 'aturBerbagi'])->name('berbagi');
+
+            // Membuka folder divisi milik rekan kerja (baca-saja, wajib login)
+            $sc2 = \App\Http\Controllers\Portal\ShareController::class;
+            Route::get('/divisi/{folder}', [$sc2, 'internal'])->name('divisi');
+            Route::get('/divisi/{folder}/folder/{sub}', [$sc2, 'internal'])->name('divisi.sub');
+            Route::get('/divisi/{folder}/berkas/{item}', [$sc2, 'unduhInternal'])->name('divisi.unduh');
+            Route::delete('/{item}', [$c, 'hapus'])->name('hapus');
+            Route::post('/{item}/pulihkan', [$c, 'pulihkan'])->name('pulihkan');
+            Route::delete('/{item}/permanen', [$c, 'hapusPermanen'])->name('permanen');
+        });
+    });
+});
+
 Route::prefix('sharing')->name('sharing.')->group(function () {
     Route::get('/', [\App\Http\Controllers\SharingController::class, 'index'])->name('index');
     Route::post('/folder', [\App\Http\Controllers\SharingController::class, 'createFolder'])->name('folder');

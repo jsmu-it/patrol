@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# kunci penandatanganan — jangan pernah di-commit
+android/key.properties
+*.jks
+
+# keluaran build Android
+android/build/
+android/app/build/

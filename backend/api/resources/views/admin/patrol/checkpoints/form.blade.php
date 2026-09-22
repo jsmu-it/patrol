@@ -33,7 +33,7 @@
     </div>
     <div>
         <label class="block text-gray-600 mb-1">Radius (meter)</label>
-        <input type="number" name="radius_meters" value="{{ old('radius_meters', $checkpoint->radius_meters ?? 15) }}" class="w-full border border-gray-300 rounded px-2 py-1.5" required>
+        <input type="number" name="radius_meters" value="{{ old('radius_meters', $checkpoint->radius_meters ?? 50) }}" class="w-full border border-gray-300 rounded px-2 py-1.5" required>
     </div>
     @if($isEdit)
         <div class="md:col-span-2 text-[11px] text-gray-500">
@@ -74,7 +74,7 @@
 
             const defaultLat = parseFloat(latInput.value || '0') || 0;
             const defaultLng = parseFloat(lngInput.value || '0') || 0;
-            const defaultRadius = parseInt(radiusInput.value || '15') || 15;
+            const defaultRadius = parseInt(radiusInput.value || '50') || 50;
 
             const map = L.map('checkpoint-map').setView([defaultLat, defaultLng], (latInput.value && lngInput.value) ? 16 : 2);
 
@@ -106,7 +106,7 @@
                     marker = L.marker(latLng).addTo(map);
                 }
 
-                const radius = parseInt(radiusInput.value || '15') || 15;
+                const radius = parseInt(radiusInput.value || '50') || 50;
                 if (circle) {
                     circle.setLatLng(latLng);
                     circle.setRadius(radius);

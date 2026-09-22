@@ -71,7 +71,41 @@ class _LeaveListScreenState extends ConsumerState<LeaveListScreen> {
     final balances = user?.leaveBalances;
 
     if (balances == null || balances.isEmpty) {
-      return const SizedBox.shrink();
+      // Penempatan di luar Head Office memang tidak punya jatah cuti. Dulu
+      // bagian ini dibiarkan kosong tanpa penjelasan, sehingga petugas mengira
+      // saldonya belum termuat.
+      return Card(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.event_busy, color: Colors.grey.shade500),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tidak ada cuti',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Penempatan Anda tidak mendapat jatah cuti. '
+                      'Pengajuan izin dan sakit tetap bisa dikirim.',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Card(

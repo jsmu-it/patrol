@@ -116,18 +116,19 @@
                     <td class="px-4 py-3 text-gray-600">{{ $user->activeProject?->name ?? '-' }}</td>
                     @foreach($leaveTypes as $lt)
                         @php
-                            $balance = $user->leaveBalances->firstWhere('leave_type_id', $lt->id);
-                            $quota = $balance?->quota ?? 0;
-                            $used = $balance?->used ?? 0;
-                            $remaining = max(0, $quota - $used);
+                            $berhak = \App\Services\SaldoCuti::berhakCuti($user);
+                            $saldo = $berhak
+                                ? \App\Services\SaldoCuti::untuk($user, (int) $year, $leaveTypes, $user->leaveBalances)
+                                    ->firstWhere('leave_type_id', $lt->id)
+                                : null;
                         @endphp
                         <td class="px-4 py-3 text-center">
-                            @if($balance)
-                                <span class="text-sm {{ $remaining > 0 ? 'text-green-600' : 'text-gray-400' }}">
-                                    {{ $remaining }}/{{ $quota }}
-                                </span>
+                            @if(! $berhak)
+                                <span class="text-xs text-gray-400">tidak ada cuti</span>
                             @else
-                                <span class="text-gray-400">-</span>
+                                <span class="text-sm {{ $saldo['remaining'] > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                    {{ $saldo['remaining'] }}/{{ $saldo['quota'] }}
+                                </span>
                             @endif
                         </td>
                     @endforeach

@@ -4,6 +4,12 @@
 @section('page_title', 'Saldo Cuti: {{ $user->name }}')
 
 @section('content')
+    @unless($berhak ?? true)
+        <div class="mb-4 px-4 py-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+            Penempatan karyawan ini bukan Head Office, jadi tidak mendapat jatah cuti.
+            Di aplikasi tampil sebagai &ldquo;tidak ada cuti&rdquo;.
+        </div>
+    @endunless
     <div class="mb-4">
         <a href="{{ route('admin.leave-balance.index', ['year' => $year]) }}" class="text-blue-600 hover:text-blue-800 text-sm">
             &larr; Kembali ke Daftar
@@ -50,15 +56,19 @@
             <tbody class="divide-y divide-gray-100">
             @foreach($leaveTypes as $lt)
                 @php
-                    $balance = $balances->firstWhere('leave_type_id', $lt->id);
-                    $quota = $balance?->quota ?? 0;
-                    $used = $balance?->used ?? 0;
-                    $remaining = max(0, $quota - $used);
+                    $baris = $saldo[$lt->id] ?? null;
+                    $quota = $baris['quota'] ?? 0;
+                    $used = $baris['used'] ?? 0;
+                    $remaining = $baris['remaining'] ?? 0;
+                    $tersimpan = $baris['tersimpan'] ?? false;
                 @endphp
                 <tr class="hover:bg-gray-50" x-data="{ editing: false }">
                     <td class="px-4 py-3 font-medium">{{ $lt->name }}</td>
                     <td class="px-4 py-3 text-center">
-                        <span x-show="!editing">{{ $quota }}</span>
+                        <span x-show="!editing">
+                            {{ $quota }}
+                            @unless($tersimpan)<span class="text-[10px] text-gray-400">(belum disetel)</span>@endunless
+                        </span>
                         <input x-show="editing" type="number" name="quota" value="{{ $quota }}" min="0" form="form-{{ $lt->id }}" class="px-2 py-1 border border-gray-300 rounded text-sm w-20 text-center">
                     </td>
                     <td class="px-4 py-3 text-center text-gray-600">{{ $used }}</td>

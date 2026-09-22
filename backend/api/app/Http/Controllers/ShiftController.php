@@ -11,7 +11,13 @@ class ShiftController extends Controller
 {
     public function index(): JsonResponse
     {
-        $shifts = Shift::query()->orderBy('start_time')->get();
+        // Dibatasi ke project aktif pengguna; shift milik project lain
+        // tidak lagi ikut terkirim.
+        $projectId = request()->user()?->active_project_id;
+        $shifts = Shift::query()
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->orderBy('start_time')
+            ->get();
 
         return response()->json(ShiftResource::collection($shifts));
     }
@@ -54,7 +60,7 @@ class ShiftController extends Controller
             ], 422);
         }
 
-        $shifts = $project->shifts()->wherePivot('is_active', true)->get();
+        $shifts = $project->shifts()->get();
 
         return response()->json(ShiftResource::collection($shifts));
     }

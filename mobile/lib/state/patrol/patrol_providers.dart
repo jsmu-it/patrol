@@ -23,6 +23,7 @@ class PatrolNotifier extends StateNotifier<PatrolState> {
     String? description,
     required double latitude,
     required double longitude,
+    double? accuracy,
     String? photoPath,
     String? type, // Added type
   }) async {
@@ -37,6 +38,7 @@ class PatrolNotifier extends StateNotifier<PatrolState> {
         description: description,
         latitude: latitude,
         longitude: longitude,
+        accuracy: accuracy,
         photoPath: photoPath,
         type: type,
       );

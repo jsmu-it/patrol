@@ -1,7 +1,7 @@
 @extends('layouts.company_profile')
 
-@section('title', 'Privacy Policy - JSMU Guard')
-@section('description', 'Kebijakan Privasi JSMU Guard')
+@section('title', 'Privacy Policy - Jaya Sakti Mandiri Unggul')
+@section('description', 'Kebijakan Privasi Jaya Sakti Mandiri Unggul')
 
 @section('content')
 <section class="bg-blue-900 py-16">

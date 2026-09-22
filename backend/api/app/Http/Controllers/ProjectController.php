@@ -47,24 +47,23 @@ class ProjectController extends Controller
 
     public function shifts(Project $project): JsonResponse
     {
-        $shifts = $project->shifts()->wherePivot('is_active', true)->get();
+        $shifts = $project->shifts()->get();
 
         return response()->json(ShiftResource::collection($shifts));
     }
 
     public function syncShifts(Request $request, Project $project): JsonResponse
     {
+        // Shift sekarang milik project. Endpoint ini memindahkan kepemilikan
+        // shift yang dipilih ke project ini; shift lain yang sebelumnya milik
+        // project ini dilepas hanya bila belum dipakai absensi.
         $validated = $request->validate([
             'shift_ids' => ['required', 'array'],
             'shift_ids.*' => ['integer', 'exists:shifts,id'],
         ]);
 
-        $syncData = [];
-        foreach ($validated['shift_ids'] as $shiftId) {
-            $syncData[$shiftId] = ['is_active' => true];
-        }
-
-        $project->shifts()->sync($syncData);
+        \App\Models\Shift::whereIn('id', $validated['shift_ids'])
+            ->update(['project_id' => $project->id]);
 
         $project->refresh();
 

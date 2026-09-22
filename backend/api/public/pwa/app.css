@@ -383,6 +383,18 @@ body {
     display: block;
 }
 
+/*
+ * Safari di iPhone/iPad menampilkan pratinjau kamera depan secara terbalik
+ * (seperti bercermin), sementara foto yang tersimpan tidak terbalik. Akibatnya
+ * apa yang dilihat petugas saat berfoto berbeda dengan hasil yang terkirim.
+ * Kelas ini dipasang lewat JavaScript hanya di iOS untuk membatalkan cermin
+ * bawaan itu, sehingga pratinjau sama persis dengan foto yang disimpan.
+ */
+.camera-container video.imbangi-cermin {
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+}
+
 .camera-container canvas {
     display: none;
 }

@@ -348,12 +348,14 @@
             </div>
             <span>Keluar</span>
         </button>
+        @if($canEnd ?? true)
         <button class="tb-btn tb-btn-end" onclick="endMeeting()">
             <div class="tb-icon">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z"/></svg>
             </div>
             <span>End</span>
         </button>
+        @endif
     </div>
 
     <script src="https://unpkg.com/livekit-client@2.9.1/dist/livekit-client.umd.js"></script>
@@ -362,7 +364,11 @@
         const TOKEN = '{{ $token }}';
         const JOIN_URL = '{{ $meeting->join_url }}';
         const MY_NAME = '{{ addslashes($userName) }}';
-        const END_MEETING_URL = '{{ route("admin.meetings.end", $meeting->id) }}';
+        const END_MEETING_URL = '{{ $endUrl ?? route("admin.meetings.end", $meeting->id) }}';
+        // Ruangan yang sama dipakai dari dashboard admin maupun Portal Kerja,
+        // jadi ke mana peserta kembali setelah keluar ditentukan pemanggilnya.
+        const BACK_URL = '{{ $backUrl ?? route("admin.meetings.index") }}';
+        const CAN_END = {{ ($canEnd ?? true) ? 'true' : 'false' }};
         const CSRF_TOKEN = '{{ csrf_token() }}';
         let currentHost = MY_NAME; // track who is host
         let transferTargetName = '';
@@ -402,7 +408,7 @@
             room.on(LivekitClient.RoomEvent.ParticipantConnected, (p) => { createTile(p, false); updateGrid(); updateParticipantsList(); showToast(p.identity + ' bergabung'); });
             room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (p) => { removeTile(p); updateGrid(); updateParticipantsList(); showToast(p.identity + ' keluar'); });
             room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, handleSpeakers);
-            room.on(LivekitClient.RoomEvent.Disconnected, () => { window.location.href = '{{ route("admin.meetings.index") }}'; });
+            room.on(LivekitClient.RoomEvent.Disconnected, () => { window.location.href = BACK_URL; });
             room.on(LivekitClient.RoomEvent.DataReceived, handleData);
             room.on(LivekitClient.RoomEvent.TrackMuted, (pub, p) => updateTileStatus(p));
             room.on(LivekitClient.RoomEvent.TrackUnmuted, (pub, p) => updateTileStatus(p));
@@ -700,7 +706,7 @@
         function closeModal(id) { document.getElementById('modal-' + id).classList.remove('open'); }
 
         function leaveMeeting() { openModal('leave'); }
-        function doLeaveMeeting() { closeModal('leave'); room.disconnect(); window.location.href = '{{ route("admin.meetings.index") }}'; }
+        function doLeaveMeeting() { closeModal('leave'); room.disconnect(); window.location.href = BACK_URL; }
 
         function endMeeting() { openModal('end'); }
         async function doEndMeeting() {
@@ -719,7 +725,7 @@
                 });
             } catch {}
             if (room) room.disconnect();
-            window.location.href = '{{ route("admin.meetings.index") }}';
+            window.location.href = BACK_URL;
         }
 
         // Transfer Host
@@ -845,7 +851,7 @@
                 if (data.type === 'hand') showToast(data.raised ? `✋ ${data.sender} raised hand` : `${data.sender} lowered hand`);
                 if (data.type === 'meeting_ended') {
                     showToast('⛔ Meeting telah diakhiri oleh host');
-                    setTimeout(() => { if(room) room.disconnect(); window.location.href = '{{ route("admin.meetings.index") }}'; }, 1500);
+                    setTimeout(() => { if(room) room.disconnect(); window.location.href = BACK_URL; }, 1500);
                 }
                 if (data.type === 'host_changed') {
                     currentHost = data.newHost;

@@ -15,45 +15,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->seedShifts();
         $this->seedProjectAndUsers();
-    }
-
-    private function seedShifts(): void
-    {
-        $defaultShifts = [
-            [
-                'name' => 'Pagi',
-                'code' => 'SHIFT_PAGI',
-                'start_time' => '07:00:00',
-                'end_time' => '15:00:00',
-            ],
-            [
-                'name' => 'Sore',
-                'code' => 'SHIFT_SORE',
-                'start_time' => '15:00:00',
-                'end_time' => '23:00:00',
-            ],
-            [
-                'name' => 'Malam',
-                'code' => 'SHIFT_MALAM',
-                'start_time' => '23:00:00',
-                'end_time' => '07:00:00',
-            ],
-        ];
-
-        foreach ($defaultShifts as $shiftData) {
-            Shift::updateOrCreate(
-                ['code' => $shiftData['code']],
-                [
-                    'name' => $shiftData['name'],
-                    'start_time' => $shiftData['start_time'],
-                    'end_time' => $shiftData['end_time'],
-                    'tolerance_minutes' => 10,
-                    'is_default' => true,
-                ]
-            );
-        }
     }
 
     private function seedProjectAndUsers(): void
@@ -70,13 +32,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $shifts = Shift::all();
-        if ($shifts->isNotEmpty()) {
-            $syncData = [];
-            foreach ($shifts as $shift) {
-                $syncData[$shift->id] = ['is_active' => true];
-            }
-            $project->shifts()->syncWithoutDetaching($syncData);
+        // Shift dimiliki project. Setiap project baru mendapat tiga shift dasar
+        // miliknya sendiri, terpisah dari project lain.
+        $shiftDasar = [
+            ['name' => 'Pagi',  'code' => 'SHIFT_PAGI',  'start_time' => '07:00:00', 'end_time' => '15:00:00'],
+            ['name' => 'Sore',  'code' => 'SHIFT_SORE',  'start_time' => '15:00:00', 'end_time' => '23:00:00'],
+            ['name' => 'Malam', 'code' => 'SHIFT_MALAM', 'start_time' => '23:00:00', 'end_time' => '07:00:00'],
+        ];
+
+        foreach ($shiftDasar as $data) {
+            Shift::updateOrCreate(
+                ['project_id' => $project->id, 'code' => $data['code']],
+                $data + ['tolerance_minutes' => 10, 'is_default' => true]
+            );
         }
 
         User::updateOrCreate(

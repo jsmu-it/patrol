@@ -108,43 +108,87 @@ class ProjectController extends Controller
         return redirect()->route('admin.projects.index')->with('status', 'Project berhasil dihapus.');
     }
 
-    public function editShifts(Request $request, Project $project): View
+    /**
+     * Shift dikelola langsung di halaman Edit Project. Tidak ada lagi halaman
+     * terpisah maupun daftar shift global — setiap project memiliki shift
+     * sendiri, sehingga shift project lain tidak pernah ikut tampil.
+     */
+    private function pastikanBisaAkses(Request $request, Project $project): void
     {
         $user = $request->user();
-        $accessibleProjectIds = $user->getAccessibleProjectIds();
-        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
+        if (! $user->isSuperAdmin() && ! in_array($project->id, $user->getAccessibleProjectIds())) {
             abort(403);
         }
-
-        $shifts = Shift::orderBy('start_time')->get();
-        $activeShiftIds = $project->shifts()->pluck('shifts.id')->all();
-
-        return view('admin.projects.shifts', compact('project', 'shifts', 'activeShiftIds'));
     }
 
-    public function updateShifts(Request $request, Project $project): RedirectResponse
+    private function aturanShift(Project $project, ?Shift $shift = null): array
     {
-        $user = $request->user();
-        $accessibleProjectIds = $user->getAccessibleProjectIds();
-        if (!$user->isSuperAdmin() && !in_array($project->id, $accessibleProjectIds)) {
-            abort(403);
-        }
+        return [
+            'name'              => ['required', 'string', 'max:100'],
+            'start_time'        => ['required', 'date_format:H:i'],
+            'end_time'          => ['required', 'date_format:H:i'],
+            'tolerance_minutes' => ['required', 'integer', 'min:0', 'max:180'],
+        ];
+    }
 
-        $data = $request->validate([
-            'shift_ids' => ['array'],
-            'shift_ids.*' => ['integer', 'exists:shifts,id'],
+    public function storeShift(Request $request, Project $project): RedirectResponse
+    {
+        $this->pastikanBisaAkses($request, $project);
+        $data = $request->validate($this->aturanShift($project));
+
+        $project->shifts()->create([
+            'name'              => $data['name'],
+            'code'              => $this->buatKode($project, $data['name']),
+            'start_time'        => $data['start_time'],
+            'end_time'          => $data['end_time'],
+            'tolerance_minutes' => $data['tolerance_minutes'],
         ]);
 
-        $shiftIds = $data['shift_ids'] ?? [];
+        return back()->with('status', 'Shift "' . $data['name'] . '" ditambahkan.');
+    }
 
-        $syncData = [];
-        foreach ($shiftIds as $shiftId) {
-            $syncData[$shiftId] = ['is_active' => true];
+    public function updateShift(Request $request, Project $project, Shift $shift): RedirectResponse
+    {
+        $this->pastikanBisaAkses($request, $project);
+        abort_unless($shift->project_id === $project->id, 404);
+
+        $data = $request->validate($this->aturanShift($project, $shift));
+        $shift->update($data);
+
+        return back()->with('status', 'Shift "' . $shift->name . '" diperbarui.');
+    }
+
+    public function destroyShift(Request $request, Project $project, Shift $shift): RedirectResponse
+    {
+        $this->pastikanBisaAkses($request, $project);
+        abort_unless($shift->project_id === $project->id, 404);
+
+        // Riwayat absensi tidak boleh hilang karena shift dihapus.
+        $terpakai = \App\Models\AttendanceLog::where('shift_id', $shift->id)->count();
+        if ($terpakai > 0) {
+            return back()->withErrors([
+                'shift' => 'Shift "' . $shift->name . '" tidak bisa dihapus karena sudah dipakai '
+                         . $terpakai . ' catatan absensi. Ubah jamnya bila perlu penyesuaian.',
+            ]);
         }
 
-        $project->shifts()->sync($syncData);
+        $nama = $shift->name;
+        $shift->delete();
 
-        return redirect()->route('admin.projects.index')->with('status', 'Shift project berhasil diperbarui.');
+        return back()->with('status', 'Shift "' . $nama . '" dihapus.');
+    }
+
+    /** Kode unik per project, dipakai internal dan tidak ditampilkan ke admin. */
+    private function buatKode(Project $project, string $nama): string
+    {
+        $dasar = 'SHIFT_' . strtoupper(preg_replace('/[^A-Za-z0-9]+/', '_', $nama));
+        $kode = $dasar;
+        $n = 2;
+        while (Shift::where('project_id', $project->id)->where('code', $kode)->exists()) {
+            $kode = $dasar . '_' . $n++;
+        }
+
+        return $kode;
     }
 
     public function editPkwt(Request $request, Project $project): View

@@ -29,9 +29,12 @@ class SendShiftReminderNotifications extends Command
             ->whereNotNull('active_project_id')
             ->whereNotNull('fcm_token')
             ->where('fcm_token', '!=', '')
-            ->with(['activeProject.shifts' => function ($query) {
-                $query->wherePivot('is_active', true);
-            }])
+            // Sisa dari masa shift masih berupa relasi many-to-many: dulu
+            // penyaringnya kolom pivot `is_active`. Sejak shift menjadi milik
+            // satu project, seluruh shift project memang berlaku — dan
+            // wherePivot() pada relasi hasMany menghasilkan query rusak yang
+            // menggagalkan pengingat shift setiap menit.
+            ->with('activeProject.shifts')
             ->get();
 
         if ($debug) {

@@ -272,7 +272,10 @@ class _PatrolFormScreenState extends ConsumerState<PatrolFormScreen> {
 
     try {
       // Use quick position for faster response
-      final position = await locationService.getQuickPosition();
+      // Titik patroli radiusnya sempit, jadi harus memakai pembacaan GPS
+      // yang benar-benar baru — titik lama dari cache membuat petugas yang
+      // sudah berdiri di depan titiknya tetap terbaca di luar jangkauan.
+      final position = await locationService.getCurrentPosition();
 
       final message = await notifier.submit(
         projectId: user!.activeProjectId!,
@@ -284,6 +287,7 @@ class _PatrolFormScreenState extends ConsumerState<PatrolFormScreen> {
             : _descriptionController.text.trim(),
         latitude: position.latitude,
         longitude: position.longitude,
+        accuracy: position.accuracy,
         photoPath: _photoPath,
         type: widget.args.mode == PatrolFormMode.normal ? 'patrol' : widget.args.mode,
       );

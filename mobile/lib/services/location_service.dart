@@ -16,9 +16,132 @@ class LocationService {
   Position? _lastPosition;
   DateTime? _lastPositionTime;
 
-  /// Get current position with timeout and fallback to last known position
-  /// Max wait time: 5 seconds for fresh GPS, fallback to cached/last known
+  /// Akurasi yang dianggap cukup baik untuk absensi. Begitu tercapai,
+  /// pencarian dihentikan supaya petugas tidak menunggu lama.
+  static const double _akurasiCukup = 25;
+
+  /// Batas akurasi yang masih boleh dipakai. Di atas ini titiknya biasanya
+  /// berasal dari menara seluler atau Wi-Fi, bukan satelit, dan bisa meleset
+  /// ratusan meter — persis penyebab "sudah di lokasi tapi dibilang di luar".
+  static const double _akurasiMaksimum = 100;
+
+  /// Lama menunggu fix GPS yang layak.
+  static const Duration _batasWaktu = Duration(seconds: 20);
+
+  /// Umur maksimum titik yang boleh dipakai ulang tanpa mengukur lagi.
+  static const Duration _umurCache = Duration(seconds: 15);
+
+  /// Mengambil posisi terbaik yang bisa didapat dalam [_batasWaktu].
+  ///
+  /// Fix GPS pertama hampir selalu jelek: perangkat menjawab cepat memakai
+  /// jaringan seluler, lalu memperbaiki dirinya begitu satelit terkunci.
+  /// Karena itu aliran posisi diikuti beberapa detik dan yang dipakai adalah
+  /// yang akurasinya paling kecil, bukan yang paling cepat datang.
   Future<Position> getCurrentPosition() async {
+    await _pastikanIzin();
+
+    // Titik yang baru saja diukur dan mutunya bagus boleh dipakai lagi.
+    if (_lastPosition != null &&
+        _lastPositionTime != null &&
+        DateTime.now().difference(_lastPositionTime!) < _umurCache &&
+        _lastPosition!.accuracy <= _akurasiCukup) {
+      return _lastPosition!;
+    }
+
+    Position? terbaik;
+
+    final selesai = Completer<void>();
+    late final StreamSubscription<Position> langganan;
+
+    langganan = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.best,
+        distanceFilter: 0,
+      ),
+    ).listen(
+      (posisi) {
+        if (terbaik == null || posisi.accuracy < terbaik!.accuracy) {
+          terbaik = posisi;
+        }
+        // Sudah cukup baik — tidak perlu menahan petugas lebih lama.
+        if (terbaik!.accuracy <= _akurasiCukup && !selesai.isCompleted) {
+          selesai.complete();
+        }
+      },
+      onError: (_) {
+        if (!selesai.isCompleted) selesai.complete();
+      },
+      cancelOnError: false,
+    );
+
+    // Satu pembacaan langsung sebagai jaring pengaman bila aliran posisi
+    // tidak pernah mengeluarkan apa pun (terjadi di sebagian perangkat).
+    unawaited(
+      Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.best,
+          timeLimit: _batasWaktu,
+        ),
+      ).then((posisi) {
+        if (terbaik == null || posisi.accuracy < terbaik!.accuracy) {
+          terbaik = posisi;
+        }
+      }).catchError((_) => null),
+    );
+
+    try {
+      await selesai.future.timeout(_batasWaktu);
+    } on TimeoutException {
+      // Waktu habis: pakai yang terbaik sejauh ini, kalau ada.
+    } finally {
+      await langganan.cancel();
+    }
+
+    final hasil = terbaik;
+
+    if (hasil == null) {
+      throw LocationException(
+        'Gagal mendapatkan lokasi. Pastikan GPS aktif, lalu coba lagi di area terbuka.',
+      );
+    }
+
+    if (hasil.accuracy > _akurasiMaksimum) {
+      throw LocationException(
+        'Sinyal GPS terlalu lemah (±${hasil.accuracy.round()} m). '
+        'Coba keluar sebentar ke area terbuka, tunggu beberapa detik, lalu ulangi.',
+      );
+    }
+
+    _lastPosition = hasil;
+    _lastPositionTime = DateTime.now();
+
+    return hasil;
+  }
+
+  /// Posisi untuk keperluan tampilan, mis. menghitung jarak di layar beranda.
+  ///
+  /// Boleh memakai titik lama supaya layar tidak terasa lambat. Jangan dipakai
+  /// untuk mengirim absensi — untuk itu selalu pakai [getCurrentPosition].
+  Future<Position> getQuickPosition() async {
+    if (_lastPosition != null &&
+        _lastPositionTime != null &&
+        DateTime.now().difference(_lastPositionTime!) < const Duration(minutes: 2)) {
+      return _lastPosition!;
+    }
+
+    await _pastikanIzin();
+
+    try {
+      final terakhir = await Geolocator.getLastKnownPosition();
+      if (terakhir != null) {
+        return terakhir;
+      }
+    } catch (_) {}
+
+    return getCurrentPosition();
+  }
+
+  Future<void> _pastikanIzin() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw LocationException(
@@ -42,70 +165,6 @@ class LocationService {
         'Akses lokasi ditolak permanen. Aktifkan izin lokasi dari pengaturan.',
       );
     }
-
-    // Use cached position if less than 30 seconds old (instant)
-    if (_lastPosition != null && _lastPositionTime != null) {
-      final age = DateTime.now().difference(_lastPositionTime!);
-      if (age.inSeconds < 30) {
-        return _lastPosition!;
-      }
-    }
-
-    // Try to get last known position first (instant, might be stale but usable)
-    Position? lastKnown;
-    try {
-      lastKnown = await Geolocator.getLastKnownPosition();
-    } catch (_) {}
-
-    // Try to get fresh position with short timeout (5 seconds max)
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium, // Faster than high
-          timeLimit: Duration(seconds: 5),
-        ),
-      );
-      
-      _lastPosition = position;
-      _lastPositionTime = DateTime.now();
-      return position;
-    } on TimeoutException {
-      // Timeout - use last known position if available
-      if (lastKnown != null) {
-        _lastPosition = lastKnown;
-        _lastPositionTime = DateTime.now();
-        return lastKnown;
-      }
-      
-      // No fallback available
-      throw LocationException(
-        'Gagal mendapatkan lokasi. Pastikan GPS aktif dan coba lagi.',
-      );
-    }
-  }
-
-  /// Get position quickly - prefer cached, then last known, then fresh with timeout
-  Future<Position> getQuickPosition() async {
-    // 1. Use cached if recent
-    if (_lastPosition != null && _lastPositionTime != null) {
-      final age = DateTime.now().difference(_lastPositionTime!);
-      if (age.inMinutes < 2) {
-        return _lastPosition!;
-      }
-    }
-
-    // 2. Try last known (instant)
-    try {
-      final lastKnown = await Geolocator.getLastKnownPosition();
-      if (lastKnown != null) {
-        _lastPosition = lastKnown;
-        _lastPositionTime = DateTime.now();
-        return lastKnown;
-      }
-    } catch (_) {}
-
-    // 3. Fall back to regular method
-    return getCurrentPosition();
   }
 }
 

@@ -14,6 +14,7 @@ use App\Models\UserProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -104,7 +105,7 @@ class UserController extends Controller
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:6'],
-            'role' => ['required', 'in:ADMIN,GUARD'],
+            'role' => ['required', Rule::in(array_merge(array_keys(User::peranFormulir()), [User::ROLE_PROJECT_ADMIN]))],
             'active_project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'supervisor_id' => ['nullable', 'integer', 'exists:users,id'],
             'profile_photo' => ['nullable', 'image', 'max:10240'],
@@ -302,12 +303,22 @@ class UserController extends Controller
             abort(403);
         }
 
+        // Pengaman: superadmin tidak bisa menurunkan peran akunnya sendiri,
+        // karena begitu tersimpan ia langsung kehilangan akses untuk
+        // mengembalikannya.
+        if ($user->id === $current->id
+            && $user->role === User::ROLE_SUPERADMIN
+            && $request->input('role') !== User::ROLE_SUPERADMIN) {
+            return back()->withInput()
+                ->with('error', 'Peran akun Anda sendiri tidak bisa diturunkan dari SUPERADMIN. Minta superadmin lain yang mengubahnya.');
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:255', 'unique:users,username,'.$user->id],
             'email' => ['nullable', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'password' => ['nullable', 'string', 'min:6'],
-            'role' => ['required', 'in:ADMIN,GUARD'],
+            'role' => ['required', Rule::in(array_merge(array_keys(User::peranFormulir()), [User::ROLE_PROJECT_ADMIN]))],
             'active_project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'supervisor_id' => ['nullable', 'integer', 'exists:users,id'],
             'profile_photo' => ['nullable', 'image', 'max:10240'],

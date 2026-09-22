@@ -27,6 +27,8 @@ class AttendanceLog extends Model
         'occurred_at',
         'latitude',
         'longitude',
+        'gps_accuracy_meters',
+        'distance_meters',
         'selfie_photo_path',
         'note',
         'mode',

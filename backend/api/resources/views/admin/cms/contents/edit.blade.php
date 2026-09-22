@@ -1,8 +1,15 @@
 @extends('layouts.admin')
 
-@section('page_title', 'Edit Konten: ' . ucwords(str_replace('_', ' ', $key)))
+@section('page_title', 'Edit Konten: ' . $content->label())
+
+@section('title', 'Edit ' . $content->label())
 
 @section('content')
+    <p class="text-sm text-gray-600 mb-4">
+        {{ $content->letak() }} &middot;
+        <a href="{{ route('admin.cms-contents.index') }}" class="text-blue-600 hover:underline">kembali ke daftar konten</a>
+    </p>
+
     <div class="bg-white rounded-lg shadow p-6">
         <form action="{{ route('admin.cms-contents.update', $key) }}" method="POST" enctype="multipart/form-data">
             @csrf

@@ -56,15 +56,61 @@ class User extends Authenticatable
     public const ROLE_PAYROLL = 'PAYROLL';
     public const ROLE_CMS = 'CMS';
 
+    /**
+     * Berkas pribadi ikut terhapus bersama akunnya.
+     *
+     * Relasi `portal_items.user_id` sengaja diubah menjadi SET NULL supaya
+     * arsip milik divisi tidak ikut lenyap ketika akun karyawan dihapus.
+     * Konsekuensinya berkas pribadi tidak lagi terhapus otomatis oleh basis
+     * data, jadi dibereskan di sini — arsip divisi (user_id memang kosong)
+     * tidak tersentuh karena hanya item milik akun ini yang diambil.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $user): void {
+            $item = PortalItem::where('user_id', $user->id)->get();
+
+            foreach ($item as $berkas) {
+                if ($berkas->path) {
+                    \Illuminate\Support\Facades\Storage::disk('local')->delete($berkas->path);
+                }
+            }
+
+            PortalItem::where('user_id', $user->id)->delete();
+        });
+    }
+
     public static function adminRoles(): array
     {
         return [
             self::ROLE_SUPERADMIN,
             self::ROLE_ADMIN,
-            self::ROLE_PROJECT_ADMIN,
+            // PROJECT_ADMIN dihapus dari pilihan: perilakunya identik dengan
+            // ADMIN (sama-sama dibatasi user_project_access, dan selalu
+            // disebut berpasangan di seluruh middleware rute). Konstantanya
+            // dipertahankan agar pengecekan lama tidak pecah.
             self::ROLE_HRD,
             self::ROLE_PAYROLL,
             self::ROLE_CMS,
+        ];
+    }
+
+    /**
+     * Peran yang bisa dipilih pada formulir karyawan: seluruh peran admin
+     * ditambah GUARD. Dipakai sebagai satu-satunya sumber kebenaran supaya
+     * pilihan di formulir tidak pernah berbeda dari yang diterima validasi —
+     * dulu formulir menawarkan SUPERADMIN sementara validasi hanya menerima
+     * ADMIN dan GUARD, sehingga penyimpanan tertolak tanpa pesan.
+     */
+    public static function peranFormulir(): array
+    {
+        return [
+            self::ROLE_SUPERADMIN => 'SUPERADMIN',
+            self::ROLE_ADMIN      => 'ADMIN',
+            self::ROLE_HRD        => 'HRD',
+            self::ROLE_PAYROLL    => 'PAYROLL',
+            self::ROLE_CMS        => 'CMS',
+            self::ROLE_GUARD      => 'GUARD',
         ];
     }
 
@@ -189,11 +235,14 @@ class User extends Authenticatable
         }
 
         // Get assigned project IDs from pivot table
-        $assignedIds = $this->accessibleProjects()->pluck('projects.id')->toArray();
+        // Selalu bilangan: sejumlah pemeriksaan hak akses membandingkannya
+        // secara ketat dengan nilai lain, jadi tipenya tidak boleh campur.
+        $assignedIds = $this->accessibleProjects()->pluck('projects.id')
+            ->map(fn ($id) => (int) $id)->all();
 
         // Fallback: if no entries in user_project_access, use active_project_id
         if (empty($assignedIds) && !empty($this->active_project_id)) {
-            return [$this->active_project_id];
+            return [(int) $this->active_project_id];
         }
 
         // If no projects assigned and no active_project_id, return empty array (no access)

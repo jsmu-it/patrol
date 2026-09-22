@@ -1,6 +1,6 @@
 @extends('layouts.company_profile')
 
-@section('title', 'Career - JSMU Guard')
+@section('title', 'Career - Jaya Sakti Mandiri Unggul')
 
 @section('content')
 <div class="bg-gray-50 py-12">

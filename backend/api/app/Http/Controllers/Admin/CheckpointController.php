@@ -83,6 +83,12 @@ class CheckpointController extends Controller
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
+        // Nilai dari formulir selalu berupa teks ("6"), sedangkan daftar project
+        // yang boleh diakses berisi bilangan (6). Dibandingkan secara ketat,
+        // keduanya tidak pernah sama — admin project pun ikut tertolak. Jadi
+        // disamakan tipenya dulu, bukan pembandingnya yang dilonggarkan.
+        $data['project_id'] = (int) $data['project_id'];
+
         // Check if user has access to the selected project
         $accessibleProjectIds = $user->getAccessibleProjectIds();
         
@@ -92,7 +98,7 @@ class CheckpointController extends Controller
             }
         }
         // Check if Project Admin role - restrict to active project only
-        elseif ($user->role === User::ROLE_PROJECT_ADMIN && $user->active_project_id && $data['project_id'] !== $user->active_project_id) {
+        elseif ($user->role === User::ROLE_PROJECT_ADMIN && $user->active_project_id && $data['project_id'] !== (int) $user->active_project_id) {
             abort(403, 'You can only create checkpoints for your active project.');
         }
 
@@ -153,7 +159,7 @@ class CheckpointController extends Controller
         $accessibleProjectIds = $user->getAccessibleProjectIds();
         
         if (!$user->isSuperAdmin() && !empty($accessibleProjectIds)) {
-            if (!in_array($checkpoint->project_id, $accessibleProjectIds, true) || !in_array($data['project_id'], $accessibleProjectIds, true)) {
+            if (!in_array($checkpoint->project_id, $accessibleProjectIds, true) || !in_array((int) $data['project_id'], $accessibleProjectIds, true)) {
                 abort(403, 'You do not have access to this checkpoint or target project.');
             }
         }
@@ -262,9 +268,18 @@ class CheckpointController extends Controller
             'file' => ['required', 'file', 'mimes:xlsx,xls,csv'],
         ]);
 
-        Excel::import(new CheckpointImport(), $request->file('file'));
+        $import = new CheckpointImport(
+            $user->isSuperAdmin() ? null : $user->getAccessibleProjectIds()
+        );
 
-        return redirect()->route('admin.patrol.checkpoints.index')->with('status', 'Import lokasi patroli berhasil diproses.');
+        Excel::import($import, $request->file('file'));
+
+        $pesan = 'Import lokasi patroli berhasil diproses.';
+        if ($import->dilewatiTanpaHak > 0) {
+            $pesan .= ' ' . $import->dilewatiTanpaHak . ' baris dilewati karena project-nya di luar hak akses Anda.';
+        }
+
+        return redirect()->route('admin.patrol.checkpoints.index')->with('status', $pesan);
     }
 
     public function downloadTemplate(): \Symfony\Component\HttpFoundation\BinaryFileResponse

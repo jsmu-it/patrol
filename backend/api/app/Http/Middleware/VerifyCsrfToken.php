@@ -12,6 +12,9 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
+        // Editor dokumen menyimpan berkas lewat panggilan server-ke-server,
+        // tanpa sesi maupun token CSRF; yang menjaganya tiket akses WOPI.
+        'wopi/*',
         //
     ];
 }

@@ -101,14 +101,12 @@ class LeaveBalanceController extends Controller
     {
         $year = $request->get('year', now()->year);
         
-        $balances = $user->leaveBalances()
-            ->where('year', $year)
-            ->with('leaveType')
-            ->get();
-
         $leaveTypes = LeaveType::active()->orderBy('name')->get();
 
-        return view('admin.leave-balance.show', compact('user', 'balances', 'leaveTypes', 'year'));
+        $berhak = \App\Services\SaldoCuti::berhakCuti($user);
+        $saldo  = \App\Services\SaldoCuti::untuk($user, (int) $year, $leaveTypes)->keyBy('leave_type_id');
+
+        return view('admin.leave-balance.show', compact('user', 'saldo', 'leaveTypes', 'year', 'berhak'));
     }
 
     /**

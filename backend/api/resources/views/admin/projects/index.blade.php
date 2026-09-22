@@ -30,7 +30,6 @@
                     <td class="px-3 py-2">{{ $project->geofence_radius_meters }}</td>
                     <td class="px-3 py-2">{!! $project->is_active ? '<span class="text-emerald-600 font-semibold">Aktif</span>' : '<span class="text-gray-400">Nonaktif</span>' !!}</td>
                     <td class="px-3 py-2 text-right space-x-2">
-                        <a href="{{ route('admin.projects.shifts.edit', $project) }}" class="text-xs text-indigo-600 hover:underline">Shift</a>
                         <a href="{{ route('admin.projects.edit', $project) }}" class="text-xs text-slate-700 hover:underline">Edit</a>
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline" onsubmit="return confirm('Hapus project ini?');">
                             @csrf

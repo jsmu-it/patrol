@@ -21,6 +21,12 @@ class Project extends Model
         'pkwt_template',
     ];
 
+    /** Lokasi kerja yang tersedia — nama project yang masih aktif. */
+    public static function daftarLokasi(): \Illuminate\Support\Collection
+    {
+        return static::where('is_active', true)->orderBy('name')->pluck('name');
+    }
+
     public function guards()
     {
         return $this->hasMany(User::class, 'active_project_id');
@@ -28,9 +34,8 @@ class Project extends Model
 
     public function shifts()
     {
-        return $this->belongsToMany(Shift::class)
-            ->withTimestamps()
-            ->withPivot('is_active');
+        // Shift kini milik project, bukan lagi daftar global yang dicentang.
+        return $this->hasMany(Shift::class)->orderBy('start_time');
     }
 
     public function attendanceLogs()

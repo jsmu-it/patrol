@@ -86,10 +86,25 @@ class PatrolController extends Controller
                 // Use checkpoint specific radius if available, otherwise default to 150m
                 $maxDistance = $checkpoint->radius_meters ?? 150;
 
-                if ($distance > $maxDistance) {
-                    return response()->json([
-                        'message' => "Lokasi Anda terlalu jauh dari titik patroli ({$distance}m). Maksimal {$maxDistance}m.",
-                    ], 422);
+                // Titik GPS bukan koordinat pasti melainkan lingkaran seluas
+                // akurasi yang dilaporkan perangkat. Tanpa memperhitungkannya,
+                // radius titik patroli yang sempit mustahil dipenuhi — petugas
+                // sudah berdiri di depan titiknya pun tetap ditolak. Aturannya
+                // disamakan dengan absensi: kelonggaran sebesar akurasi, paling
+                // banyak 75 m, dan tidak diberi sama sekali bila akurasinya di
+                // atas 150 m karena pembacaan seperti itu tidak bisa dipercaya.
+                $akurasi   = isset($data['accuracy']) ? (float) $data['accuracy'] : null;
+                $toleransi = $akurasi !== null && $akurasi > 0 && $akurasi <= 150.0
+                    ? min($akurasi, 75.0)
+                    : 0.0;
+
+                if (($distance - $toleransi) > $maxDistance) {
+                    $pesan = "Lokasi Anda terbaca {$distance}m dari titik patroli, batasnya {$maxDistance}m.";
+                    if ($akurasi !== null && $akurasi > 150.0) {
+                        $pesan .= ' Sinyal GPS sedang lemah (±' . (int) round($akurasi) . 'm), coba ulangi di area terbuka.';
+                    }
+
+                    return response()->json(['message' => $pesan], 422);
                 }
             }
         }

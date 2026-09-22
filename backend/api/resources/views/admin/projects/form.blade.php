@@ -41,7 +41,7 @@
         
         @if(isset($project))
             <div class="mt-4 flex gap-2 border-t pt-4">
-                <a href="{{ route('admin.projects.shifts.edit', $project->id) }}" class="px-3 py-2 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-flex items-center gap-2">
+                <a href="#pengaturan-shift" class="px-3 py-2 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 inline-flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     Pengaturan Shift
                 </a>
@@ -52,7 +52,7 @@
             </div>
         @else
             <div class="mt-4 p-2 bg-gray-50 border border-gray-200 rounded text-[11px] text-gray-600">
-                Simpan project terlebih dahulu untuk mengakses pengaturan Shift dan PKWT.
+                Simpan project terlebih dahulu untuk mengatur Shift dan PKWT.
             </div>
         @endif
     </div>

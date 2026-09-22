@@ -11,44 +11,13 @@ class UserResource extends JsonResource
     {
         $profile = $this->profile;
 
-        // Get active leave types and user's balances for current year
-        $activeTypes = \App\Models\LeaveType::active()->get();
-        $actualBalances = $this->leaveBalances()
-            ->where('year', now()->year)
-            ->with('leaveType')
-            ->get();
-        
-        $actualBalancesMap = $actualBalances->keyBy('leave_type_id');
-
-        // Always show all active leave types
-        $leaveBalances = $activeTypes->map(function ($type) use ($actualBalancesMap) {
-            $balance = $actualBalancesMap->get($type->id);
-            $quota = $balance ? (int) $balance->quota : (int) ($type->default_quota ?? 0);
-            $used = $balance ? (int) $balance->used : 0;
-            
-            return [
-                'leave_type_id' => (int) $type->id,
-                'leave_type_name' => (string) $type->name,
-                'quota' => (int) $quota,
-                'used' => (int) $used,
-                'remaining' => (int) max(0, $quota - $used),
-            ];
-        });
-
-        // Add any actual balances that belong to inactive leave types
-        foreach ($actualBalances as $balance) {
-            if (!$activeTypes->contains('id', $balance->leave_type_id)) {
-                $leaveBalances->push([
-                    'leave_type_id' => (int) $balance->leave_type_id,
-                    'leave_type_name' => (string) ($balance->leaveType?->name ?? 'Unknown'),
-                    'quota' => (int) $balance->quota,
-                    'used' => (int) $balance->used,
-                    'remaining' => (int) max(0, $balance->quota - $balance->used),
-                ]);
-            }
-        }
-
-        $leaveBalances = $leaveBalances->values()->all();
+        // Saldo cuti dihitung di satu tempat bersama dashboard, supaya angka
+        // yang dilihat karyawan di aplikasi tidak pernah berbeda dari yang
+        // dilihat HR di dashboard.
+        $berhakCuti    = \App\Services\SaldoCuti::berhakCuti($this->resource);
+        $leaveBalances = \App\Services\SaldoCuti::untuk($this->resource)
+            ->map(fn (array $b) => \Illuminate\Support\Arr::except($b, ['tersimpan']))
+            ->all();
 
         return [
             'id' => $this->id,
@@ -76,6 +45,9 @@ class UserResource extends JsonResource
             'project_lng' => $this->activeProject?->longitude,
             'project_radius' => $this->activeProject?->geofence_radius_meters,
             'leave_balances' => $leaveBalances,
+            // Penempatan di luar Head Office memang tidak punya jatah cuti;
+            // dibedakan dari "punya jatah tetapi sisa nol".
+            'leave_eligible' => $berhakCuti,
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

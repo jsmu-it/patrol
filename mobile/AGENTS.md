@@ -23,7 +23,7 @@ File ini ditujukan untuk AI/automation agent yang akan bekerja di **aplikasi Flu
 - `lib/main.dart`
   - Entry point aplikasi, setup `ProviderScope`, routing, dan init Firebase/FCM.
 - `lib/config/app_config.dart`
-  - Base URL API. Default emulator: `http://10.0.2.2:8000/api`, untuk device fisik gunakan IP LAN PC, misalnya `http://192.168.0.75:8000/api`.
+  - Base URL API. Produksi: `https://jsmu.co.id/api`. Default emulator: `http://10.0.2.2:8000/api`, untuk device fisik gunakan IP LAN PC, misalnya `http://192.168.0.75:8000/api`.
 - `lib/routes/app_router.dart`
   - Konstanta route (splash, login, home, attendance history, patrol, leave, profile).
 - `lib/services/`

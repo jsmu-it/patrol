@@ -19,6 +19,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     required int shiftId,
     required double latitude,
     required double longitude,
+    double? accuracy,
     required String mode,
     String? note,
     required String selfiePath,
@@ -34,6 +35,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
         shiftId: shiftId,
         latitude: latitude,
         longitude: longitude,
+        accuracy: accuracy,
         mode: mode,
         note: note,
         selfiePath: selfiePath,
@@ -63,6 +65,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
     required int shiftId,
     required double latitude,
     required double longitude,
+    double? accuracy,
     String? note,
     String? selfiePath,
   }) async {
@@ -77,6 +80,7 @@ class AttendanceNotifier extends StateNotifier<AttendanceState> {
         shiftId: shiftId,
         latitude: latitude,
         longitude: longitude,
+        accuracy: accuracy,
         note: note,
         selfiePath: selfiePath,
       );

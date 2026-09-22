@@ -14,6 +14,22 @@
         </div>
 
         <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Masuk ke menu</label>
+            <select name="parent_id" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="">&mdash; Jadikan menu baru di "Our Services" &mdash;</option>
+                @foreach($induk as $calon)
+                    <option value="{{ $calon->id }}" {{ (string) old('parent_id', $service->parent_id) === (string) $calon->id ? 'selected' : '' }}>
+                        {{ $calon->title }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-gray-500">
+                Pilih menu tujuan agar layanan ini tampil di bawahnya &mdash; misalnya di bawah K-9 Guard.
+                Pilih baris paling atas bila ingin membuat menu baru yang berdiri sendiri.
+            </p>
+        </div>
+
+        <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi Singkat</label>
             <textarea name="short_description" rows="3" class="w-full border-gray-300 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500">{{ old('short_description', $service->short_description) }}</textarea>
         </div>

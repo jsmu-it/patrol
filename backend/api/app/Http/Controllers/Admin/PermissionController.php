@@ -31,49 +31,98 @@ class PermissionController extends Controller
     public function create()
     {
         $projects = Project::orderBy('name')->get();
-        $roles = [
-            User::ROLE_SUPERADMIN => 'Superadmin',
-            User::ROLE_ADMIN => 'Admin',
-            User::ROLE_PROJECT_ADMIN => 'Project Admin',
-            User::ROLE_HRD => 'HRD',
-            User::ROLE_PAYROLL => 'Payroll',
-            User::ROLE_CMS => 'CMS',
-        ];
 
-        return view('admin.permissions.create', compact('projects', 'roles'));
+        // Karyawan yang sudah terdaftar, supaya admin tidak perlu mengetik
+        // ulang data orang yang datanya sudah ada. Peran ADMIN ikut ditampilkan
+        // agar admin lama bisa dipindah otoritasnya.
+        $karyawan = User::whereIn('role', [User::ROLE_GUARD, User::ROLE_ADMIN])
+            ->with('profile:id,user_id,nip,position')
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'email', 'role', 'active_project_id'])
+            ->map(fn ($u) => [
+                'id'         => $u->id,
+                'name'       => $u->name,
+                'username'   => $u->username,
+                'email'      => $u->email,
+                'role'       => $u->role,
+                'project_id' => $u->active_project_id,
+                'nip'        => $u->profile->nip ?? null,
+                'position'   => $u->profile->position ?? null,
+            ])
+            ->values();
+
+        return view('admin.permissions.create', [
+            'projects' => $projects,
+            'roles'    => $this->daftarPeran(),
+            'karyawan' => $karyawan,
+        ]);
+    }
+
+    /**
+     * Peran yang bisa dipilih.
+     *
+     * PROJECT_ADMIN dihapus dari pilihan karena perilakunya identik dengan
+     * ADMIN: keduanya dibatasi oleh project yang di-assign lewat
+     * user_project_access, dan di seluruh middleware rute selalu disebut
+     * berpasangan. Konstantanya sengaja dipertahankan agar pengecekan lama
+     * di kode tidak pecah.
+     */
+    private function daftarPeran(): array
+    {
+        return [
+            User::ROLE_SUPERADMIN => 'Superadmin',
+            User::ROLE_ADMIN      => 'Admin',
+            User::ROLE_HRD        => 'HRD',
+            User::ROLE_PAYROLL    => 'Payroll',
+            User::ROLE_CMS        => 'CMS',
+        ];
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6',
-            'role' => ['required', Rule::in([
-                User::ROLE_SUPERADMIN,
-                User::ROLE_ADMIN,
-                User::ROLE_PROJECT_ADMIN,
-                User::ROLE_HRD,
-                User::ROLE_PAYROLL,
-                User::ROLE_CMS,
-            ])],
-            'project_ids' => 'nullable|array',
+        // Dua cara: pilih karyawan yang sudah terdaftar, atau buat akun baru.
+        $mode = $request->input('mode', 'baru');
+
+        $aturanUmum = [
+            'role'          => ['required', Rule::in(array_keys($this->daftarPeran()))],
+            'project_ids'   => 'nullable|array',
             'project_ids.*' => 'exists:projects,id',
+        ];
+
+        if ($mode === 'karyawan') {
+            $validated = $request->validate($aturanUmum + [
+                'user_id' => ['required', 'exists:users,id'],
+            ]);
+
+            $user = User::findOrFail($validated['user_id']);
+
+            if ($user->role === User::ROLE_SUPERADMIN) {
+                return back()->withErrors(['user_id' => 'Superadmin tidak bisa diubah dari halaman ini.'])->withInput();
+            }
+
+            $user->update(['role' => $validated['role']]);
+            $user->accessibleProjects()->sync($validated['project_ids'] ?? []);
+
+            return redirect()->route('admin.permissions.index')
+                ->with('success', $user->name . ' sekarang punya akses admin dengan otoritas project yang dipilih.');
+        }
+
+        $validated = $request->validate($aturanUmum + [
+            'name'     => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users',
+            'email'    => 'required|email|unique:users',
+            'password' => 'required|string|min:6',
         ]);
 
         $user = User::create([
-            'name' => $validated['name'],
+            'name'     => $validated['name'],
             'username' => $validated['username'],
-            'email' => $validated['email'],
+            'email'    => $validated['email'],
             'password' => $validated['password'],
-            'role' => $validated['role'],
+            'role'     => $validated['role'],
         ]);
 
-        // Sync project access
-        if (!empty($validated['project_ids'])) {
-            $user->accessibleProjects()->sync($validated['project_ids']);
-        }
+        $user->accessibleProjects()->sync($validated['project_ids'] ?? []);
 
         return redirect()->route('admin.permissions.index')
             ->with('success', 'Admin berhasil ditambahkan dengan otoritas project yang dipilih.');
@@ -82,14 +131,7 @@ class PermissionController extends Controller
     public function edit(User $permission)
     {
         $projects = Project::orderBy('name')->get();
-        $roles = [
-            User::ROLE_SUPERADMIN => 'Superadmin',
-            User::ROLE_ADMIN => 'Admin',
-            User::ROLE_PROJECT_ADMIN => 'Project Admin',
-            User::ROLE_HRD => 'HRD',
-            User::ROLE_PAYROLL => 'Payroll',
-            User::ROLE_CMS => 'CMS',
-        ];
+        $roles = $this->daftarPeran();
 
         $selectedProjects = $permission->accessibleProjects->pluck('id')->toArray();
 

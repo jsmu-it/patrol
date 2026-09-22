@@ -1,0 +1,65 @@
+# Resep build iOS untuk JSMU Guard.
+#
+# Berkas iOS hanya bisa dibangun di macOS ber-Xcode, sedangkan server ini Linux.
+# Resep ini dipakai Codemagic (atau layanan sejenis) yang menyediakan mesin
+# macOS, jadi tidak perlu membeli Mac. Yang tetap harus disiapkan sendiri:
+# akun Apple Developer, sertifikat penandatanganan, dan GoogleService-Info.plist
+# dari Firebase project "jsmuguard".
+
+workflows:
+  ios-rilis:
+    name: JSMU Guard — iOS
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      flutter: 3.27.0
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        # Dibuat di Codemagic: Teams > Code signing identities
+        distribution_type: app_store
+        bundle_identifier: com.jsmu.jsmuguard
+      groups:
+        # Berisi APP_STORE_CONNECT_* untuk unggah otomatis ke TestFlight
+        - appstore_credentials
+
+    scripts:
+      - name: Ambil paket Flutter
+        script: flutter pub get
+
+      - name: Pasang berkas Firebase iOS
+        script: |
+          # Simpan isi GoogleService-Info.plist sebagai variabel rahasia
+          # bernama GOOGLE_SERVICE_INFO_PLIST (base64) di Codemagic.
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > ios/Runner/GoogleService-Info.plist
+            echo "GoogleService-Info.plist terpasang."
+          else
+            echo "PERINGATAN: berkas Firebase iOS belum disetel, notifikasi HP tidak akan jalan."
+          fi
+
+      - name: Pasang pod
+        script: |
+          cd ios && pod install --repo-update
+
+      - name: Periksa kode
+        script: flutter analyze --no-fatal-infos || true
+
+      - name: Bangun IPA
+        script: |
+          flutter build ipa --release \
+            --build-name=${FLUTTER_BUILD_NAME:-2.0.0} \
+            --build-number=${BUILD_NUMBER:-1} \
+            --export-options-plist=/Users/builder/export_options.plist
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Naik ke TestFlight dulu; rilis ke App Store tetap ditekan manual.
+        submit_to_testflight: true
+        submit_to_app_store: false

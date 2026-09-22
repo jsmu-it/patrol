@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apply for {{ $career->title }} - JSMU Guard</title>
+    <title>Apply for {{ $career->title }} - Jaya Sakti Mandiri Unggul</title>
     <link href="{{ asset('assets/css/tailwind.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/fonts/inter-local.css') }}" rel="stylesheet">
     <style>
@@ -19,7 +19,7 @@
     <div class="min-h-screen py-6 sm:py-12 px-3 sm:px-6 lg:px-8">
         <div class="max-w-3xl mx-auto">
             <div class="text-center mb-6 sm:mb-8">
-                <img src="{{ asset('images/admin-logo.png') }}" alt="JSMU Guard" class="h-10 sm:h-12 mx-auto mb-3 sm:mb-4">
+                <img src="{{ asset('images/admin-logo.png') }}" alt="Jaya Sakti Mandiri Unggul" class="h-10 sm:h-12 mx-auto mb-3 sm:mb-4">
                 <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Form Lamaran Kerja</h1>
                 <p class="mt-2 text-sm sm:text-base text-gray-600">Posisi: <span class="font-semibold text-blue-600">{{ $career->title }}</span></p>
             </div>
@@ -543,7 +543,7 @@
             </div>
             
             <div class="text-center mt-6 sm:mt-8 text-xs sm:text-sm text-gray-500">
-                &copy; {{ date('Y') }} JSMU Guard. All rights reserved.
+                &copy; {{ date('Y') }} Jaya Sakti Mandiri Unggul. All rights reserved.
             </div>
         </div>
     </div>

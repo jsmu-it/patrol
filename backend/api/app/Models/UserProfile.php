@@ -113,6 +113,17 @@ class UserProfile extends Model
         'cert3_date' => 'date',
     ];
 
+    /**
+     * Divisi yang benar-benar dipakai karyawan. Perusahaan tidak punya tabel
+     * master divisi — daftarnya tumbuh dari data profil, jadi diambil dari
+     * sana supaya pilihan di formulir selalu sama dengan isi database.
+     */
+    public static function daftarDivisi(): \Illuminate\Support\Collection
+    {
+        return static::whereNotNull('division')->where('division', '!=', '')
+            ->distinct()->orderBy('division')->pluck('division');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

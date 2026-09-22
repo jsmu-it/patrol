@@ -1,6 +1,6 @@
 @extends('layouts.company_profile')
 
-@section('title', 'Download Application - JSMU Guard')
+@section('title', 'Download Application - Jaya Sakti Mandiri Unggul')
 
 @section('content')
 <!-- Hero Section -->
@@ -91,6 +91,57 @@
                 <p class="text-gray-500">Please check back later for our mobile applications.</p>
             </div>
         @endif
+
+        {{-- Pengguna iPhone/iPad belum punya aplikasi di App Store, jadi
+             diarahkan ke versi web yang fiturnya sama untuk absensi. --}}
+        <div class="mt-12 bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="md:flex">
+                <div class="md:w-2/3 p-8">
+                    <div class="flex items-center mb-4">
+                        <div class="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <svg class="w-8 h-8 text-gray-800" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-xl font-bold text-gray-900">iPhone &amp; iPad</h3>
+                            <span class="text-sm text-gray-500">Versi web &mdash; tanpa perlu App Store</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 mb-4">
+                        Aplikasi JSMU Guard untuk iOS belum tersedia di App Store. Sementara ini, absensi, patroli,
+                        pengajuan cuti, dan riwayat kehadiran bisa dijalankan lewat peramban Safari &mdash; datanya
+                        masuk ke sistem yang sama dengan aplikasi Android.
+                    </p>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-5">
+                        <p class="text-sm font-semibold text-gray-900 mb-2">Cara memasang di layar utama:</p>
+                        <ol class="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                            <li>Buka <span class="font-medium text-gray-900">jsmu.co.id/app</span> memakai Safari.</li>
+                            <li>Ketuk tombol Bagikan di bilah bawah.</li>
+                            <li>Pilih <span class="font-medium text-gray-900">Tambah ke Layar Utama</span>.</li>
+                            <li>Masuk dengan NIP dan kata sandi yang sama seperti aplikasi Android.</li>
+                        </ol>
+                        <p class="text-xs text-gray-500 mt-3">
+                            Saat pertama absen, Safari akan meminta izin lokasi dan kamera &mdash; keduanya wajib diizinkan
+                            supaya absensi bisa terkirim.
+                        </p>
+                    </div>
+                    <a href="/app"
+                       class="inline-flex items-center px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg transition duration-300">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 12h14"/>
+                        </svg>
+                        Buka Aplikasi Web
+                    </a>
+                </div>
+                <div class="md:w-1/3 bg-blue-50 p-8 flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-blue-900 mb-1">jsmu.co.id/app</div>
+                        <p class="text-sm text-blue-800">Buka lewat Safari di iPhone</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 @endsection

@@ -38,6 +38,13 @@ return [
         'project_id' => env('FIREBASE_PROJECT_ID'),
     ],
 
+    'collabora' => [
+        // Dipanggil peramban pengguna, jadi memakai alamat publik.
+        'url'       => env('COLLABORA_URL', 'https://jsmu.co.id'),
+        // Dipanggil dari dalam server, cukup lewat jaringan docker.
+        'discovery' => env('COLLABORA_DISCOVERY', 'http://collabora:9980/hosting/discovery'),
+    ],
+
     'livekit' => [
         'api_key' => env('LIVEKIT_API_KEY'),
         'api_secret' => env('LIVEKIT_API_SECRET'),

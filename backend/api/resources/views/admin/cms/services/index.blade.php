@@ -4,7 +4,10 @@
 
 @section('content')
 <div class="mb-4 flex justify-between items-center">
-    <p class="text-gray-600">Daftar layanan yang ditampilkan di website.</p>
+    <p class="text-gray-600">
+        Daftar layanan yang ditampilkan di website. Urutannya mengikuti kolom Order,
+        dan susunannya menentukan isi menu <span class="font-medium">Our Services</span>.
+    </p>
     <a href="{{ route('admin.cms-services.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium">+ Tambah Layanan</a>
 </div>
 
@@ -13,7 +16,7 @@
         <table class="w-full text-sm text-left">
             <thead class="bg-gray-50 text-gray-600 font-medium border-b">
                 <tr>
-                    <th class="px-6 py-3">Judul</th>
+                    <th class="px-6 py-3">Judul / Letak di menu</th>
                     <th class="px-6 py-3">Deskripsi Singkat</th>
                     <th class="px-6 py-3">Order</th>
                     <th class="px-6 py-3">Gambar</th>
@@ -21,9 +24,18 @@
                 </tr>
             </thead>
             <tbody class="divide-y">
-                @foreach($services as $service)
+                @foreach($services->flatMap(fn ($utama) => collect([$utama])->concat($utama->children)) as $service)
                 <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-3 font-medium text-gray-900">{{ $service->title }}</td>
+                    <td class="px-6 py-3 font-medium text-gray-900">
+                        @if($service->adalahAnak())
+                            <span class="text-gray-400">&#8627;</span>
+                            <span class="ml-1">{{ $service->title }}</span>
+                            <div class="ml-5 text-xs font-normal text-gray-500">di bawah menu {{ $service->parent->title ?? '-' }}</div>
+                        @else
+                            {{ $service->title }}
+                            <div class="text-xs font-normal text-gray-500">menu utama</div>
+                        @endif
+                    </td>
                     <td class="px-6 py-3 max-w-xs truncate">{{ $service->short_description }}</td>
                     <td class="px-6 py-3">{{ $service->order }}</td>
                     <td class="px-6 py-3">

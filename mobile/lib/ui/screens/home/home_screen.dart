@@ -45,6 +45,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   StreamSubscription<SyncEvent>? _syncSubscription;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   int _pendingCount = 0;
+  bool _sesiKedaluwarsa = false;
   bool _wasOffline = false;
 
   // Local attendance state for offline support
@@ -129,6 +130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     
     setState(() {
       _pendingCount = event.pendingCount;
+      _sesiKedaluwarsa = event.sesiKedaluwarsa;
     });
 
     // If items were synced, refresh attendance history 
@@ -417,12 +419,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.cloud_off,
-                                      size: 16, color: Colors.orange),
+                                  Icon(
+                                      _sesiKedaluwarsa
+                                          ? Icons.lock_outline
+                                          : Icons.cloud_off,
+                                      size: 16,
+                                      color: Colors.orange),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      '$_pendingCount data belum terkirim (Offline)',
+                                      // Menyebut "Offline" padahal sinyalnya
+                                      // baik hanya membuat petugas menunggu
+                                      // sesuatu yang tidak akan terjadi.
+                                      _sesiKedaluwarsa
+                                          ? '$_pendingCount data belum terkirim. Sesi Anda sudah berakhir — keluar lalu masuk lagi agar terkirim.'
+                                          : '$_pendingCount data belum terkirim (menunggu jaringan)',
                                       style: TextStyle(
                                           color: Colors.orange.shade800,
                                           fontSize: 12),
@@ -1526,6 +1537,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           shiftId: shift.id,
           latitude: position.latitude,
           longitude: position.longitude,
+          accuracy: position.accuracy,
           mode: mode,
           note: note,
           selfiePath: selfiePath,
@@ -1543,6 +1555,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           shiftId: shift.id,
           latitude: position.latitude,
           longitude: position.longitude,
+          accuracy: position.accuracy,
           note: note,
           selfiePath: selfiePath,
         );

@@ -86,6 +86,23 @@ class LeaveRequestController extends Controller
         }
 
 
+        // Kotak masuk portal: jalur yang tidak bergantung pada Firebase, jadi
+        // pengajuan tetap terlihat walau notifikasi HP sedang tidak aktif.
+        $penerima = collect([$supervisor])
+            ->merge(\App\Models\User::whereIn('role', [\App\Models\User::ROLE_SUPERADMIN, \App\Models\User::ROLE_HRD])->get())
+            ->filter()
+            ->unique('id')
+            ->reject(fn ($p) => $p->id === $user->id);
+
+        if ($penerima->isNotEmpty()) {
+            \Illuminate\Support\Facades\Notification::send(
+                $penerima,
+                new \App\Notifications\CutiDiajukan($leave->loadMissing('user', 'leaveType'), 'persetujuan'),
+            );
+        }
+
+        $user->notify(new \App\Notifications\CutiDiajukan($leave, 'tanda_terima'));
+
         $this->notifications->notifyUser(
             $user,
             'Pengajuan '.$typeLabel,

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>@yield('title', 'JSMU Guard - Security Services')</title>
+    <title>@yield('title', 'PT. Jaya Sakti Mandiri Unggul - Security Services')</title>
     <meta name="description" content="@yield('description', 'Professional Security Services')">
     
     <!-- Tailwind CSS (Local) -->
@@ -24,7 +24,7 @@
     <!-- Navigation -->
     <nav class="bg-white shadow-md sticky top-0 z-50" x-data="{ mobileMenuOpen: false, profileOpen: false, servicesOpen: false, activityOpen: false }">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-20">
+            <div class="flex justify-between items-center h-20 gap-6">
                 @php
                     $headerLogo = \App\Models\Setting::get('logo');
                 @endphp
@@ -32,21 +32,21 @@
                     <div class="flex-shrink-0 flex items-center">
                         <a href="{{ route('home') }}" class="flex items-center">
                             @if($headerLogo)
-                                <img src="{{ asset('storage/' . $headerLogo) }}" alt="JSMU Guard" class="h-12">
+                                <img src="{{ asset('storage/' . $headerLogo) }}" alt="Jaya Sakti Mandiri Unggul" class="h-12">
                             @else
-                                <span class="text-2xl font-bold text-blue-900 tracking-wider">JSMU GUARD</span>
+                                <span class="text-lg font-bold text-blue-900 leading-tight whitespace-nowrap">Jaya Sakti Mandiri Unggul</span>
                             @endif
                         </a>
                     </div>
                 </div>
                 
                 <!-- Desktop Menu -->
-                <div class="hidden md:flex md:items-center md:space-x-6">
-                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase">Home</a>
+                <div class="hidden xl:flex xl:items-center xl:space-x-1">
+                    <a href="{{ route('home') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">Home</a>
                     
                     <!-- Profile Dropdown -->
                     <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                        <button class="text-gray-700 group-hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase flex items-center" @click="open = !open">
+                        <button class="text-gray-700 group-hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase flex items-center whitespace-nowrap" @click="open = !open">
                             Profile
                             <svg class="ml-1 h-4 w-4 transition-transform" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
@@ -67,7 +67,7 @@
 
                     <!-- Services Dropdown -->
                     <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                        <a href="{{ route('services') }}" class="text-gray-700 group-hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase flex items-center" @click="open = !open">
+                        <a href="{{ route('services') }}" class="text-gray-700 group-hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase flex items-center whitespace-nowrap" @click="open = !open">
                             Our Services
                             <svg class="ml-1 h-4 w-4 transition-transform" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </a>
@@ -79,19 +79,22 @@
                              x-transition:leave-start="transform opacity-100 scale-100"
                              x-transition:leave-end="transform opacity-0 scale-95"
                              class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50" style="display: none;">
-                            <a href="{{ route('services') }}#security-guards" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Security Guards</a>
-                            <a href="{{ route('services') }}#technology" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Technology Application</a>
-                            <a href="{{ route('services') }}#training" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Training & Education</a>
-                            <a href="{{ route('services') }}#consultancy" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Consultancy & Risk</a>
-                            <a href="{{ route('services') }}#k9" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">K-9 Guard</a>
+                            @forelse($menuLayanan ?? [] as $layanan)
+                                <a href="{{ route('services') }}#{{ $layanan->slug }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ $layanan->title }}</a>
+                                @foreach($layanan->children as $anak)
+                                    <a href="{{ route('services') }}#{{ $anak->slug }}" class="block pl-8 pr-4 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700">{{ $anak->title }}</a>
+                                @endforeach
+                            @empty
+                                <a href="{{ route('services') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Lihat semua layanan</a>
+                            @endforelse
                         </div>
                     </div>
 
-                    <a href="{{ route('achievements') }}" class="text-gray-700 hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase">Achievement</a>
+                    <a href="{{ route('achievements') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">Achievement</a>
                     
                     <!-- Activity Dropdown -->
                     <div class="relative group" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false">
-                        <a href="{{ route('activities') }}" class="text-gray-700 group-hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase flex items-center" @click="open = !open">
+                        <a href="{{ route('activities') }}" class="text-gray-700 group-hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase flex items-center whitespace-nowrap" @click="open = !open">
                             Activity
                             <svg class="ml-1 h-4 w-4 transition-transform" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </a>
@@ -108,15 +111,16 @@
                         </div>
                     </div>
 
-                    <a href="{{ route('clients') }}" class="text-gray-700 hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase">Our Client</a>
-                    <a href="{{ route('faq') }}" class="text-gray-700 hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase">FAQ</a>
-                    <a href="{{ route('career') }}" class="text-gray-700 hover:text-blue-900 font-medium px-3 py-2 rounded-md text-sm uppercase">Career</a>
+                    <a href="{{ route('clients') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">Our Client</a>
+                    <a href="{{ route('faq') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">FAQ</a>
+                    <a href="{{ route('career') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">Career</a>
+                    <a href="{{ route('application') }}" class="text-gray-700 hover:text-blue-900 font-medium px-2 py-2 rounded-md text-sm uppercase whitespace-nowrap">Aplikasi</a>
                     
-                    <a href="{{ route('contact') }}" class="bg-blue-900 text-white hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-bold uppercase transition duration-300 shadow-lg">Contact Us</a>
+                    <a href="{{ route('contact') }}" class="bg-blue-900 text-white hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-bold uppercase transition duration-300 shadow-lg whitespace-nowrap ml-2">Contact Us</a>
                 </div>
 
                 <!-- Mobile menu button -->
-                <div class="flex items-center md:hidden">
+                <div class="flex items-center xl:hidden">
                     <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" aria-expanded="false">
                         <span class="sr-only">Open main menu</span>
                         <svg class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -128,7 +132,7 @@
         </div>
 
         <!-- Mobile Menu -->
-        <div x-show="mobileMenuOpen" class="md:hidden bg-white border-t border-gray-200" x-transition>
+        <div x-show="mobileMenuOpen" class="xl:hidden bg-white border-t border-gray-200" x-transition>
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                 <a href="{{ route('home') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">HOME</a>
                 
@@ -149,6 +153,7 @@
                 <a href="{{ route('clients') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">OUR CLIENT</a>
                 <a href="{{ route('faq') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">FAQ</a>
                 <a href="{{ route('career') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">CAREER</a>
+                <a href="{{ route('application') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">APLIKASI</a>
                 <a href="{{ route('contact') }}" class="block px-3 py-2 rounded-md text-base font-medium text-blue-900 font-bold hover:bg-gray-50">CONTACT US</a>
             </div>
         </div>
@@ -164,7 +169,7 @@
         $footerAddress = \App\Models\Setting::get('footer_address', 'Jakarta, Indonesia');
         $footerEmail = \App\Models\Setting::get('footer_email', 'info@jsmuguard.com');
         $footerPhone = \App\Models\Setting::get('footer_phone', '');
-        $footerCopyright = \App\Models\Setting::get('footer_copyright', '&copy; ' . date('Y') . ' JSMU Guard. All rights reserved.');
+        $footerCopyright = \App\Models\Setting::get('footer_copyright', '&copy; ' . date('Y') . ' PT. Jaya Sakti Mandiri Unggul. All rights reserved.');
         $siteLogo = \App\Models\Setting::get('logo');
         $socialFacebook = \App\Models\Setting::get('social_facebook');
         $socialInstagram = \App\Models\Setting::get('social_instagram');
@@ -178,9 +183,9 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
                 <div>
                     @if($siteLogo)
-                        <img src="{{ asset('storage/' . $siteLogo) }}" alt="JSMU Guard" class="h-12 mb-4">
+                        <img src="{{ asset('storage/' . $siteLogo) }}" alt="Jaya Sakti Mandiri Unggul" class="h-12 mb-4">
                     @else
-                        <h3 class="text-xl font-bold mb-4 tracking-wider">JSMU GUARD</h3>
+                        <h3 class="text-xl font-bold mb-4">Jaya Sakti Mandiri Unggul</h3>
                     @endif
                     <p class="text-gray-400 text-sm leading-relaxed">
                         Providing professional security services with integrity and modern technology solutions.
@@ -193,6 +198,7 @@
                         <li><a href="{{ route('services') }}" class="hover:text-white transition">Our Services</a></li>
                         <li><a href="{{ route('career') }}" class="hover:text-white transition">Career</a></li>
                         <li><a href="{{ route('contact') }}" class="hover:text-white transition">Contact</a></li>
+                        <li><a href="{{ route('application') }}" class="hover:text-white transition">Download App</a></li>
                     </ul>
                 </div>
                 <div>

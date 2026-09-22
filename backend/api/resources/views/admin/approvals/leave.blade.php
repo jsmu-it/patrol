@@ -16,15 +16,34 @@
                     <option value="all" {{ ($status ?? '') == 'all' ? 'selected' : '' }}>Semua</option>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                <select name="project_id" onchange="this.form.submit()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Semua project</option>
+                    @foreach($projects as $project)
+                        <option value="{{ $project->id }}" {{ (int) $projectId === $project->id ? 'selected' : '' }}>{{ $project->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @if($projectId)
+                <a href="{{ route('admin.approvals.leave', ['status' => $status]) }}" class="text-sm text-gray-500 underline pb-2">tampilkan semua project</a>
+            @endif
         </form>
     </div>
+
+    {{-- Formulir tindakan massal; centangnya ada di tabel dan disalin saat dikirim --}}
+    <form id="form-bulk" action="{{ route('admin.approvals.leave.bulk') }}" method="POST">@csrf</form>
 
     <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-x-auto text-xs">
         <table class="min-w-full">
             <thead class="bg-gray-50 text-gray-500">
             <tr>
+                <th class="px-3 py-2 text-left">
+                    <input type="checkbox" id="centang-semua" class="h-4 w-4 rounded border-gray-300" title="Pilih semua yang menunggu di halaman ini">
+                </th>
                 <th class="px-3 py-2 text-left font-semibold">Tanggal Pengajuan</th>
                 <th class="px-3 py-2 text-left font-semibold">Nama</th>
+                <th class="px-3 py-2 text-left font-semibold">Project</th>
                 <th class="px-3 py-2 text-left font-semibold">Tipe</th>
                 <th class="px-3 py-2 text-left font-semibold">Periode</th>
                 <th class="px-3 py-2 text-left font-semibold">Alasan</th>
@@ -34,10 +53,23 @@
             </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
+            @php $projectSebelumnya = null; @endphp
             @forelse($requests as $req)
+                @if(($req->user?->activeProject?->name) !== $projectSebelumnya)
+                    @php $projectSebelumnya = $req->user?->activeProject?->name; @endphp
+                    <tr class="bg-gray-50">
+                        <td colspan="9" class="px-3 py-1.5 font-semibold text-gray-600">{{ $projectSebelumnya ?? 'Tanpa project' }}</td>
+                    </tr>
+                @endif
                 <tr class="hover:bg-gray-50">
+                    <td class="px-3 py-2">
+                        @if($req->status === 'pending')
+                            <input type="checkbox" class="centang-baris h-4 w-4 rounded border-gray-300" value="{{ $req->id }}">
+                        @endif
+                    </td>
                     <td class="px-3 py-2">{{ $req->created_at?->format('Y-m-d H:i') }}</td>
                     <td class="px-3 py-2 font-medium">{{ $req->user?->name }}</td>
+                    <td class="px-3 py-2">{{ $req->user?->activeProject?->name ?? '-' }}</td>
                     <td class="px-3 py-2">{{ $req->leaveType?->name ?? $req->type }}</td>
                     <td class="px-3 py-2">{{ $req->date_from?->format('Y-m-d') }} &mdash; {{ $req->date_to?->format('Y-m-d') }}</td>
                     <td class="px-3 py-2 max-w-xs truncate" title="{{ $req->reason }}">{{ $req->reason }}</td>
@@ -83,7 +115,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-3 py-4 text-center text-gray-500">Tidak ada pengajuan cuti.</td>
+                    <td colspan="9" class="px-3 py-4 text-center text-gray-500">Tidak ada pengajuan cuti.</td>
                 </tr>
             @endforelse
             </tbody>
@@ -93,4 +125,6 @@
             <div>{{ $requests->links() }}</div>
         </div>
     </div>
+
+    @include('admin.approvals._bulk', ['label' => 'pengajuan cuti'])
 @endsection

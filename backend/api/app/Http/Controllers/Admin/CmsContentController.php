@@ -11,14 +11,26 @@ class CmsContentController extends Controller
 {
     public function index()
     {
-        return redirect()->route('admin.dashboard'); // Not used directly
+        // Barisnya disiapkan dari katalog supaya blok yang belum pernah diisi
+        // tetap muncul — dulu menu ini melempar balik ke dashboard, jadi HSSE
+        // dan Archipelago tidak pernah kelihatan bisa diedit.
+        foreach (CmsContent::BLOK as $key => [$label, $letak]) {
+            CmsContent::firstOrCreate(['key' => $key], ['title' => $label]);
+        }
+
+        $contents = CmsContent::orderByRaw('FIELD(`key`, ?, ?, ?, ?, ?)', array_keys(CmsContent::BLOK))
+            ->get();
+
+        return view('admin.cms.contents.index', compact('contents'));
     }
 
     public function edit($key)
     {
+        abort_unless(array_key_exists($key, CmsContent::BLOK), 404);
+
         $content = CmsContent::firstOrCreate(
             ['key' => $key],
-            ['title' => ucwords(str_replace('_', ' ', $key))]
+            ['title' => CmsContent::BLOK[$key][0]]
         );
 
         return view('admin.cms.contents.edit', compact('content', 'key'));
@@ -26,6 +38,8 @@ class CmsContentController extends Controller
 
     public function update(Request $request, $key)
     {
+        abort_unless(array_key_exists($key, CmsContent::BLOK), 404);
+
         $content = CmsContent::where('key', $key)->firstOrFail();
 
         $request->validate([

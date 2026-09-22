@@ -11,6 +11,18 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class CheckpointImport implements ToCollection, WithHeadingRow
 {
+    /** Baris yang dilewati karena project-nya di luar hak akses pengimpor. */
+    public int $dilewatiTanpaHak = 0;
+
+    /**
+     * @param int[]|null $projectYangBoleh null berarti tanpa batas (superadmin).
+     *        Tanpa ini, admin satu project bisa menyelipkan titik patroli — atau
+     *        menimpa titik yang sudah ada — milik project lain lewat berkas Excel.
+     */
+    public function __construct(private readonly ?array $projectYangBoleh = null)
+    {
+    }
+
     public function collection(Collection $rows): void
     {
         foreach ($rows as $row) {
@@ -24,6 +36,11 @@ class CheckpointImport implements ToCollection, WithHeadingRow
 
             // Skip if project not found
             if (!$project) {
+                continue;
+            }
+
+            if ($this->projectYangBoleh !== null && !in_array((int) $project->id, $this->projectYangBoleh, true)) {
+                $this->dilewatiTanpaHak++;
                 continue;
             }
 

@@ -54,6 +54,7 @@ class PatrolService {
     String? description,
     required double latitude,
     required double longitude,
+    double? accuracy,
     String? photoPath,
     String? type,
   }) async {
@@ -69,6 +70,7 @@ class PatrolService {
       description: description,
       latitude: latitude,
       longitude: longitude,
+      accuracy: accuracy,
       photoPath: photoPath,
       type: type,
       occurredAt: occurredAt,

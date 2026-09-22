@@ -238,10 +238,15 @@ async function getLocation() {
         
         currentLocation = {
             lat: pos.coords.latitude,
-            lng: pos.coords.longitude
+            lng: pos.coords.longitude,
+            // Dikirim ke server sebagai toleransi geofence: titik GPS adalah
+            // lingkaran seluas ini, bukan satu koordinat pasti.
+            acc: pos.coords.accuracy
         };
         
-        locText.textContent = `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`;
+        locText.textContent = currentLocation.acc
+            ? `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)} (akurasi ±${Math.round(currentLocation.acc)}m)`
+            : `${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}`;
         
         // Check geofence
         const user = getUser();
@@ -252,7 +257,10 @@ async function getLocation() {
             );
             
             currentDistance = distance;
-            isWithinGeofence = distance <= user.project_radius;
+            // Toleransi sama seperti di server: ketidakpastian GPS ikut
+            // diperhitungkan, dibatasi 75 m supaya fix yang kacau tidak lolos.
+            const toleransi = Math.min(currentLocation.acc || 0, 75);
+            isWithinGeofence = (distance - toleransi) <= user.project_radius;
             
             if (isWithinGeofence) {
                 isValidLocation = true;
@@ -325,6 +333,13 @@ async function startCamera() {
             audio: false
         });
         video.srcObject = cameraStream;
+
+        // Hanya iOS yang mencerminkan pratinjau kamera depannya sendiri.
+        // Di perangkat lain pratinjau sudah sama dengan hasil fotonya.
+        const iniIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        video.classList.toggle('imbangi-cermin', iniIOS);
+
         await video.play();
     } catch (err) {
         showAlert('Gagal mengakses kamera. Izinkan akses kamera.', 'error');
@@ -354,6 +369,9 @@ function capturePhoto() {
     const ctx = canvas.getContext('2d');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
+    // Digambar apa adanya dari aliran kamera — tanpa scale(-1, 1) — supaya
+    // tulisan pada seragam atau papan nama tidak terbaca terbalik saat
+    // absensi diperiksa di dashboard.
     ctx.drawImage(video, 0, 0);
     capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
     
@@ -427,6 +445,9 @@ async function submitAttendance() {
         const formData = new FormData();
         formData.append('latitude', currentLocation.lat);
         formData.append('longitude', currentLocation.lng);
+        if (currentLocation.acc) {
+            formData.append('accuracy', Math.round(currentLocation.acc));
+        }
         formData.append('mode', selectedMode);
         formData.append('shift_id', selectedShiftId);
         

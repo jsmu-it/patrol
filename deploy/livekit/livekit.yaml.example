@@ -1,0 +1,20 @@
+# Contoh konfigurasi. Salin jadi livekit.yaml lalu isi kuncinya sendiri:
+#   KEY=jsmu$(openssl rand -hex 6); SECRET=$(openssl rand -base64 36 | tr -d '/+=' | cut -c1-40)
+# Server media untuk fitur Meeting portal.
+#
+# Isyarat (WebSocket) masuk lewat nginx di https://jsmu.co.id/livekit, jadi
+# port 7880 cukup terbuka di jaringan docker saja. Jalur medianya sendiri
+# memakai UDP; bila jaringan peserta memblokir UDP, klien otomatis mundur ke
+# TCP 7881.
+port: 7880
+log_level: info
+
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50059
+  # VPS ini ber-IP publik langsung; alamat luarnya dicari sendiri lewat STUN.
+  use_external_ip: true
+
+keys:
+  GANTI_DENGAN_KUNCI: GANTI_DENGAN_RAHASIA

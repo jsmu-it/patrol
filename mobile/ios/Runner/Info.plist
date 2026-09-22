@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Jsmuguard</string>
+	<string>JSMU Guard</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -42,7 +42,25 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>JSMUGuard membutuhkan akses lokasi Anda untuk mencatat lokasi absensi.</string>
+	<string>JSMUGuard membutuhkan akses lokasi Anda untuk mencatat lokasi absensi dan titik patroli.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>JSMUGuard membutuhkan akses lokasi untuk mencatat absensi dan patroli, termasuk saat aplikasi berjalan di latar belakang.</string>
+	<!-- Wajib ada: tanpa keterangan ini iOS menutup aplikasi begitu kamera dibuka,
+	     dan Apple menolak berkas kiriman saat ditinjau. -->
+	<key>NSCameraUsageDescription</key>
+	<string>JSMUGuard membutuhkan akses kamera untuk swafoto absensi dan foto bukti patroli.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>JSMUGuard membutuhkan akses galeri untuk melampirkan foto pada laporan patroli dan pengajuan izin.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>JSMUGuard menyimpan foto hasil laporan ke galeri Anda.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>JSMUGuard memakai Face ID untuk membuka aplikasi dengan cepat.</string>
+	<!-- Notifikasi dorong lewat Firebase membutuhkan mode latar belakang ini. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

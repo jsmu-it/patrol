@@ -1,0 +1,25 @@
+/usr/sbin/mysqld, Version: 8.0.46 (MySQL Community Server - GPL). started with:
+Tcp port: 0  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+/usr/sbin/mysqld, Version: 8.0.46 (MySQL Community Server - GPL). started with:
+Tcp port: 0  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+/usr/sbin/mysqld, Version: 8.0.46 (MySQL Community Server - GPL). started with:
+Tcp port: 3306  Unix socket: /var/run/mysqld/mysqld.sock
+Time                 Id Command    Argument
+# Time: 2026-09-18T13:17:09.277810Z
+# User@Host: jsmu_user[jsmu_user] @  [172.19.0.5]  Id: 191068
+# Query_time: 3.139503  Lock_time: 3.138613 Rows_sent: 0  Rows_examined: 1
+use jsmuguard_db;
+SET timestamp=1789737426;
+update `personal_access_tokens` set `last_used_at` = '2026-09-18 20:17:06', `personal_access_tokens`.`updated_at` = '2026-09-18 20:17:06' where `id` = 385;
+# Time: 2026-09-18T13:17:09.297685Z
+# User@Host: jsmu_user[jsmu_user] @  [172.19.0.5]  Id: 191070
+# Query_time: 3.187517  Lock_time: 0.697977 Rows_sent: 0  Rows_examined: 1
+SET timestamp=1789737426;
+update `personal_access_tokens` set `last_used_at` = '2026-09-18 20:17:06', `personal_access_tokens`.`updated_at` = '2026-09-18 20:17:06' where `id` = 385;
+# Time: 2026-09-20T19:00:16.731741Z
+# User@Host: root[root] @ localhost []  Id: 237175
+# Query_time: 2.131383  Lock_time: 0.000005 Rows_sent: 447  Rows_examined: 447
+SET timestamp=1789930814;
+SELECT /*!40001 SQL_NO_CACHE */ * FROM `user_profiles`;
